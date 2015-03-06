@@ -11,7 +11,7 @@ from erpnext.hr.utils import set_employee_name
 class LeaveAllocation(Document):
 	def validate(self):
 		self.validate_new_leaves_allocated_value()
-		self.check_existing_leave_allocation()
+		#self.check_existing_leave_allocation()
 		if not self.total_leaves_allocated:
 			self.total_leaves_allocated = self.new_leaves_allocated
 
