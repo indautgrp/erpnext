@@ -36,14 +36,23 @@ def execute(filters=None):
 
 	return columns, data
 
-def get_columns():
-	return [_("Journal Voucher") + ":Link/Journal Voucher:140", _("Account") + ":Link/Account:140",
-		_("Posting Date") + ":Date:100", _("Against Invoice") + ":Link/Purchase Invoice:130",
-		_("Against Invoice Posting Date") + ":Date:130", _("Debit") + ":Currency:120", _("Credit") + ":Currency:120",
-		_("Reference No") + "::100", _("Reference Date") + ":Date:100", _("Remarks") + "::150", _("Age") +":Int:40",
-		"0-30:Currency:100", "30-60:Currency:100", "60-90:Currency:100", _("90-Above") + ":Currency:100"
-	]
+def get_columns(filters):
+	if filters.get("payment_type") == "Incoming":
+		return [_("Journal Voucher") + ":Link/Journal Voucher:140", _("Account") + ":Link/Account:140",
+			_("Posting Date") + ":Date:100",   _("Against Invoice") + ":Link/Sales Invoice:130",
+			_("Against Invoice Posting Date") + ":Date:130", _("Debit") + ":Currency:120", _("Credit") + ":Currency:120",
+			_("Reference No") + "::100", _("Reference Date") + ":Date:100", _("Remarks") + "::150", _("Age") +":Int:40",
+			"0-30:Currency:100", "30-60:Currency:100", "60-90:Currency:100", _("90-Above") + ":Currency:100"
+			]
 
+	else:
+		return [_("Journal Voucher") + ":Link/Journal Voucher:140", _("Account") + ":Link/Account:140",
+			_("Posting Date") + ":Date:100",   _("Against Invoice") + ":Link/Purchase Invoice:130",
+			_("Against Invoice Posting Date") + ":Date:130", _("Debit") + ":Currency:120", _("Credit") + ":Currency:120",
+			_("Reference No") + "::100", _("Reference Date") + ":Date:100", _("Remarks") + "::150", _("Age") +":Int:40",
+			"0-30:Currency:100", "30-60:Currency:100", "60-90:Currency:100", _("90-Above") + ":Currency:100"
+			]
+			
 def get_conditions(filters):
 	conditions = ""
 	party_accounts = []
