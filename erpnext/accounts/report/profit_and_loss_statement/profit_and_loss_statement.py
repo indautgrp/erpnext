@@ -20,19 +20,28 @@ def execute(filters=None):
 	if net_profit_loss:
 		data.append(net_profit_loss)
 
-	columns = get_columns(period_list)
+	columns = get_columns(filters.periodicity,period_list)
 
 	return columns, data
 
 def get_net_profit_loss(income, expense, period_list):
 	if income and expense:
+		total_column=0
 		net_profit_loss = {
 			"account_name": _("Net Profit / Loss"),
 			"account": None,
 			"warn_if_negative": True
 		}
+		has_value = False
 
 		for period in period_list:
-			net_profit_loss[period.key] = flt(income[-2][period.key] - expense[-2][period.key], 3)
 
-		return net_profit_loss
+			net_profit_loss[period.key] = flt(income[-2][period.key] - expense[-2][period.key], 3)
+			
+			if net_profit_loss[period.key]:
+				has_value=True
+			total_column=total_column+net_profit_loss[period.key]
+			net_profit_loss["total"]=total_column
+		if has_value:
+			
+			return net_profit_loss
