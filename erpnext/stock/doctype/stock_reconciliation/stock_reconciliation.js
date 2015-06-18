@@ -85,6 +85,7 @@ erpnext.stock.StockReconciliation = erpnext.stock.StockController.extend({
 				["----"],
 				[__("Notes:")],
 				[__("Item Code and Warehouse should already exist.")],
+				[__("Valuation Rate cannot include any character like $, make sure it's a number.")],
 				[__("You can update either Quantity or Valuation Rate or both.")],
 				[__("If no change in either Quantity or Valuation Rate, leave the cell blank.")],
 				["----"],
