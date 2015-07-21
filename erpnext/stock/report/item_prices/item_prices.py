@@ -21,11 +21,11 @@ def execute(filters=None):
 	precision = get_currency_precision() or 2
 	data = []
 	for item in sorted(item_map):
-		data.append([item_map[item]["item_group"], item, item_map[item]["item_name"],
+		data.append([item, item_map[item]["item_name"],item_map[item]["item_group"],
 			item_map[item]["description"], 
 			flt(last_purchase_rate.get(item, 0), precision),
 			sn.get(item, {}).get("supplier"),
-#			sn.get(item, {}).get("supplier_name"),
+			sn.get(item, {}).get("supplier_name"),
 			sn.get(item, {}).get("supplier_part_no"),
 			pl.get(item, {}).get("Selling"),
 			pl.get(item, {}).get("Buying"),
@@ -41,10 +41,10 @@ def execute(filters=None):
 def get_columns(filters):
 	"""return columns based on filters"""
 
-	columns = [_("Item Group") + ":Link/Item Group:125", _("Item") + ":Link/Item:125", _("Item Name") + "::150", _("Description") + "::150",
+	columns = [_("Item") + ":Link/Item:125", _("Item Name") + "::150", _("Item Group") + ":Link/Item Group:125", _("Description") + "::150",
 		_("Last Purchase Rate") + ":Currency:90", 
 		_("Supplier") + ":Link/Supplier:100", 
-#		_("Supplier Name") + "::125", 
+		_("Supplier Name") + "::125", 
 		_("Supplier Part No") + "::125", 
 		_("Sales Price List") + "::80",
 		_("Purchase Price List") + "::80", 
@@ -152,10 +152,11 @@ def get_supplier_name():
 
 	supplier_name_map = {}
 
-	for i in frappe.db.sql("""select parent, supplier, supplier_part_no \
-		from `tabItem Supplier`\
+	for i in frappe.db.sql("""select it.parent, it.supplier, su.supplier_name, it.supplier_part_no \
+		from `tabItem Supplier` it, `tabSupplier` su where it.supplier=su.name\
 		order by parent, supplier""", as_dict=1):
 			supplier_name_map.setdefault(i.parent, {}).setdefault("supplier", i.supplier)
+			supplier_name_map.setdefault(i.parent, {}).setdefault("supplier_name", i.supplier_name)
 			supplier_name_map.setdefault(i.parent, {}).setdefault("supplier_part_no", i.supplier_part_no)
 
 	return supplier_name_map
