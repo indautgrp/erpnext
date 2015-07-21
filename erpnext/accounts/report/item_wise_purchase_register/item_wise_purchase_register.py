@@ -35,7 +35,7 @@ def execute(filters=None):
 
 def get_columns():
 	return [_("Item Code") + ":Link/Item:120", _("Item Name") + "::120", _("Item Group") + ":Link/Item Group:100",
-		_("Invoice") + ":Link/Purchase Invoice:120", _("Posting Date") + ":Date:80", _("Supplier") + ":Link/Customer:120",
+		_("Invoice") + ":Link/Purchase Invoice:120", _("Posting Date") + ":Date:80", _("Supplier") + "::120",
 		_("Supplier Account") + ":Link/Account:120", _("Project") + ":Link/Project:80", _("Company") + ":Link/Company:100",
 		_("Purchase Order") + ":Link/Purchase Order:100", _("Purchase Receipt") + ":Link/Purchase Receipt:100",
 		_("Expense Account") + ":Link/Account:140", _("Qty") + ":Float:120", _("Rate") + ":Currency:120",
