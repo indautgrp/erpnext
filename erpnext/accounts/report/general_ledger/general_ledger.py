@@ -37,7 +37,7 @@ def get_columns():
 	return [_("Posting Date") + ":Date:100", _("Account") + ":Link/Account:200", _("Debit") + ":Float:100",
 		_("Credit") + ":Float:100", _("Voucher Type") + "::120", _("Voucher No") + ":Dynamic Link/Voucher Type:120",
 		_("Against Account") + ":Link/Account:200", _("Cost Center") + ":Link/Cost Center:200", _("Project Name") + ":Link/Project:200",
-        _("Support Ticket") + ":Link/Support Ticket:120",_("Remarks") + "::400"]
+        _("Support Ticket") + ":Link/Support Ticket:120",_("Remarks") + "::400",_("Root Type") + "::100",_("Report Type") + "::120"]
 
 def get_result(filters, account_details):
 	gl_entries = get_gl_entries(filters)
@@ -54,9 +54,11 @@ def get_gl_entries(filters):
 
 	gl_entries = frappe.db.sql("""select posting_date, account,
 			sum(ifnull(debit, 0)) as debit, sum(ifnull(credit, 0)) as credit,
-			voucher_type, voucher_no, cost_center, project_name, support_ticket, remarks, is_opening, against
-		from `tabGL Entry`
-		where company=%(company)s {conditions}
+			voucher_type, voucher_no, cost_center, project_name, support_ticket, remarks, is_opening, against,
+			root_type, report_type
+		from `tabGL Entry` gl, `tabAccount` acc
+		where gl.account = acc.name
+		and gl.company=%(company)s {conditions}
 		{group_by_condition}
 		order by posting_date, account"""\
 		.format(conditions=get_conditions(filters), group_by_condition=group_by_condition),
@@ -163,6 +165,7 @@ def get_result_as_list(data):
 	for d in data:
 		result.append([d.get("posting_date"), d.get("account"), d.get("debit"),
 			d.get("credit"), d.get("voucher_type"), d.get("voucher_no"),
-			d.get("against"), d.get("cost_center"), d.get("project_name"), d.get("support_ticket"), d.get("remarks")])
+			d.get("against"), d.get("cost_center"), d.get("project_name"), d.get("support_ticket"), d.get("remarks"),
+            d.get("root_type"),d.get("report_type")])
 
 	return result
