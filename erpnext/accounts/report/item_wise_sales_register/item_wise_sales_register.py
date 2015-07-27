@@ -17,7 +17,7 @@ def execute(filters=None):
 
 	data = []
 	for d in item_list:
-		row = [d.item_code, d.item_name, d.item_group, d.parent, d.posting_date,
+		row = [d.item_code, d.item_name, d.item_group, d.parent, d.posting_date,d.customer,
 			d.customer_name, d.debit_to, d.territory, d.project_name, d.company, d.sales_order,
 			d.delivery_note, d.income_account, d.qty, d.base_rate, d.base_amount]
 
@@ -34,8 +34,8 @@ def execute(filters=None):
 def get_columns():
 	return [
 		_("Item Code") + ":Link/Item:120", _("Item Name") + "::120", _("Item Group") + ":Link/Item Group:100",
-		_("Invoice") + ":Link/Sales Invoice:120", _("Posting Date") + ":Date:80", _("Customer") + "::120",
-		_("Customer Account") + ":Link/Account:120", _("Territory") + ":Link/Territory:80",
+		_("Invoice") + ":Link/Sales Invoice:120", _("Posting Date") + ":Date:80", _("Customer") + ":Link/Customer:120",
+        _("Customer Name") + "::120", _("Customer Account") + ":Link/Account:120", _("Territory") + ":Link/Territory:80",
 		_("Project") + ":Link/Project:80", _("Company") + ":Link/Company:100", _("Sales Order") + ":Link/Sales Order:100",
 		_("Delivery Note") + ":Link/Delivery Note:100", _("Income Account") + ":Link/Account:140",
 		_("Qty") + ":Float:120", _("Rate") + ":Currency:120", _("Amount") + ":Currency:120"
