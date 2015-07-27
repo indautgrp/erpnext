@@ -42,7 +42,10 @@ def execute(filters=None):
 def get_columns(filters):
 	"""return columns based on filters"""
 
-	columns = [_("Item") + ":Link/Item:125", _("Item Name") + "::150", _("Item Group") + ":Link/Item Group:125", _("Description") + "::150",
+	columns = [_("Item") + ":Link/Item:125", 
+		_("Item Name") + "::150", 
+		_("Item Group") + ":Link/Item Group:125", 
+		_("Description") + "::200",
 		_("Last Purchase Rate") + ":Currency:90", 
 		_("Supplier") + ":Link/Supplier:100", 
 		_("Supplier Name") + "::125", 
@@ -51,7 +54,10 @@ def get_columns(filters):
 		_("Purchase Price List") + "::80", 
 		_("Manufacturer") + "::100", 
 		_("Manufacturer Part No") + "::100", 
-		_("UOM") + ":Link/UOM:80","Balance Qty:Float:100", _("Valuation Rate") + ":Currency:80", _("BOM Rate") + ":Currency:90"]
+		_("UOM") + ":Link/UOM:80",
+		_("Balance Qty") + ":Float:100", 
+		_("Valuation Rate") + ":Currency:80", 
+		_("BOM Rate") + ":Currency:90"]
 
 	return columns
 
