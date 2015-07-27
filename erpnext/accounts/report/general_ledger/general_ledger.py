@@ -35,8 +35,8 @@ def validate_filters(filters, account_details):
 
 def get_columns():
 	return [_("Posting Date") + ":Date:100", _("Account") + ":Link/Account:200", _("Debit") + ":Float:100",
-		_("Credit") + ":Float:100", _("Voucher Type") + "::120", _("Voucher No") + ":Dynamic Link/Voucher Type:160",
-		_("Against Account") + "::120", _("Cost Center") + ":Link/Cost Center:120", _("Project Name") + ":Link/Project:200",
+		_("Credit") + ":Float:100", _("Voucher Type") + "::120", _("Voucher No") + ":Dynamic Link/Voucher Type:120",
+		_("Against Account") + ":Link/Account:200", _("Cost Center") + ":Link/Cost Center:200", _("Project Name") + ":Link/Project:200",
         _("Support Ticket") + ":Link/Support Ticket:120",_("Remarks") + "::400"]
 
 def get_result(filters, account_details):
