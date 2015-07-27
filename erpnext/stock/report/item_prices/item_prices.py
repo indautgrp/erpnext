@@ -32,7 +32,8 @@ def execute(filters=None):
 			item_map[item]["manufacturer"], 
 			item_map[item]["manufacturer_part_no"], 
 			item_map[item]["stock_uom"],
-			flt(val_rate_map.get(item, 0), precision),
+			flt(val_rate_map.get(item, {}).get("balance_qty"), precision),
+            flt(val_rate_map.get(item, {}).get("val_rate"), precision),
 			flt(bom_rate.get(item, 0), precision)
 		])
 
@@ -50,7 +51,7 @@ def get_columns(filters):
 		_("Purchase Price List") + "::80", 
 		_("Manufacturer") + "::100", 
 		_("Manufacturer Part No") + "::100", 
-		_("UOM") + ":Link/UOM:80", _("Valuation Rate") + ":Currency:80", _("BOM Rate") + ":Currency:90"]
+		_("UOM") + ":Link/UOM:80","Balance Qty:Float:100", _("Valuation Rate") + ":Currency:80", _("BOM Rate") + ":Currency:90"]
 
 	return columns
 
@@ -141,9 +142,10 @@ def get_valuation_rate():
 	item_val_rate_map = {}
 
 	for d in frappe.db.sql("""select item_code,
-		sum(actual_qty*valuation_rate)/sum(actual_qty) as val_rate
+		sum(actual_qty*valuation_rate)/sum(actual_qty) as val_rate, sum(actual_qty) as balance_qty
 		from tabBin where actual_qty > 0 group by item_code""", as_dict=1):
-			item_val_rate_map.setdefault(d.item_code, d.val_rate)
+	        item_val_rate_map.setdefault(d.item_code, {}).setdefault("val_rate",d.val_rate)
+                item_val_rate_map.setdefault(d.item_code, {}).setdefault("balance_qty",d.balance_qty)
 
 	return item_val_rate_map
 
