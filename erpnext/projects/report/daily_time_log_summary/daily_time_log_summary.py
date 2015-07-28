@@ -13,10 +13,10 @@ def execute(filters=None):
 		filters["from_time"] = "00:00:00"
 		filters["to_time"] = "23:59:59"
 
-	columns = [_("Time Log") + ":Link/Time Log:120", _("Employee") + "::150", _("Date") + "::140",
-		_("Hours") + "::70", _("Activity Type") + "::120", _("Task") + ":Link/Task:150",
-		_("Task Subject") + "::180", _("Project") + ":Link/Project:120", _("Status") + "::70", _("Support Ticket") + ":Link/Support Ticket:120", 
-		_("Support Ticket Subject") + "::180"]
+	columns = [_("Time Log") + ":Link/Time Log:120", _("Employee") + "::150", _("Date") + "::100",
+		_("Hours") + "::40", _("Activity Type") + "::200", _("Task") + ":Link/Task:100",
+		_("Task Subject") + "::180", _("Project") + ":Link/Project:180", _("Status") + "::70", _("Support Ticket") + ":Link/Support Ticket:120", 
+		_("Support Ticket Subject") + "::180", _("Note") + "::300"]
 
 	
 	task_map = get_task_map()
@@ -34,21 +34,21 @@ def execute(filters=None):
 	for tl in time_logs:
 		if tl.employee not in users:
 			users.append(tl.employee)
-			data.append(["", "", "Total", total_employee_hours, "", "", "", "", "", "", ""])
+			data.append(["", "", "Total", total_employee_hours, "", "", "", "", "", "", "", ""])
 			total_employee_hours = 0
 
 		data.append([tl.name, tl.employee_name, tl.date_worked, tl.hours,
-				tl.activity_type, tl.task, task_map.get(tl.task), tl.project, tl.status, tl.support_ticket, support_ticket_map.get(tl.support_ticket)])
+				tl.activity_type, tl.task, task_map.get(tl.task), tl.project, tl.status, tl.support_ticket, support_ticket_map.get(tl.support_ticket), tl.note])
 
 		count += 1
 		total_hours += flt(tl.hours)
 		total_employee_hours += flt(tl.hours)
 
 		if count == len(time_logs):
-			data.append(["", "", "Total Hours", total_employee_hours, "", "", "", "", "", "", ""])
+			data.append(["", "", "Total Hours", total_employee_hours, "", "", "", "", "", "", "",""])
 
 	if total_hours:
-		data.append(["", "", "Grand Total", total_hours, "", "", "", "", "", "", ""])
+		data.append(["", "", "Grand Total", total_hours, "", "", "", "", "", "", "",""])
 
 	return columns, data
 
