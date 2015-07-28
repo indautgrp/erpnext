@@ -38,7 +38,7 @@ def execute(filters=None):
 			total_employee_hours = 0
 
 		data.append([tl.name, tl.employee_name, tl.date_worked, tl.hours,
-				tl.activity_type, tl.project, tl.status, tl.support_ticket, support_ticket_map.get(tl.support_ticket), tl.task, task_map.get(tl.task), tl.note])
+				tl.activity_type, tl.project, tl.support_ticket, support_ticket_map.get(tl.support_ticket), tl.task, task_map.get(tl.task), tl.status, tl.note])
 
 		count += 1
 		total_hours += flt(tl.hours)
