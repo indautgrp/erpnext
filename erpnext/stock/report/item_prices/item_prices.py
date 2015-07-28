@@ -34,7 +34,8 @@ def execute(filters=None):
 			item_map[item]["stock_uom"],
 			flt(val_rate_map.get(item, {}).get("balance_qty"), precision),
             flt(val_rate_map.get(item, {}).get("val_rate"), precision),
-			flt(bom_rate.get(item, 0), precision)
+			flt(bom_rate.get(item, 0), precision),
+            item_map[item]["parent_website_route"]
 		])
 
 	return columns, data
@@ -42,10 +43,7 @@ def execute(filters=None):
 def get_columns(filters):
 	"""return columns based on filters"""
 
-	columns = [_("Item") + ":Link/Item:125", 
-		_("Item Name") + "::150", 
-		_("Item Group") + ":Link/Item Group:125", 
-		_("Description") + "::200",
+	columns = [_("Item") + ":Link/Item:125", _("Item Name") + "::150", _("Item Group") + ":Link/Item Group:125", _("Description") + "::150",
 		_("Last Purchase Rate") + ":Currency:90", 
 		_("Supplier") + ":Link/Supplier:100", 
 		_("Supplier Name") + "::125", 
@@ -54,10 +52,8 @@ def get_columns(filters):
 		_("Purchase Price List") + "::80", 
 		_("Manufacturer") + "::100", 
 		_("Manufacturer Part No") + "::100", 
-		_("UOM") + ":Link/UOM:80",
-		_("Balance Qty") + ":Float:100", 
-		_("Valuation Rate") + ":Currency:80", 
-		_("BOM Rate") + ":Currency:90"]
+		_("UOM") + ":Link/UOM:80","Balance Qty:Float:100", _("Valuation Rate") + ":Currency:80", _("BOM Rate") + ":Currency:90",
+        _("Parent Website Route") + "::200"]
 
 	return columns
 
@@ -66,9 +62,10 @@ def get_item_details():
 
 	item_map = {}
 
-	for i in frappe.db.sql("select item_group, name, item_name, description, \
-		stock_uom, manufacturer, manufacturer_part_no from tabItem \
-		order by item_group, item_code", as_dict=1):
+	for i in frappe.db.sql("select it.item_group as item_group, it.name as name, item_name, it.description as description, \
+		stock_uom, manufacturer, manufacturer_part_no, itg.parent_website_route as parent_website_route from tabItem it, `tabItem Group` itg \
+        where it.item_group = itg.name \
+		order by it.item_group, item_code", as_dict=1):
 			item_map.setdefault(i.name, i)
 
 	return item_map
