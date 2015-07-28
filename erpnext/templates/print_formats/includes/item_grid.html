@@ -47,7 +47,7 @@
 					{%- endif -%}
 				{%- endfor -%}
 			</td>
-			if(row.item_code.upper()=="TITLE")-%}	
+			{%- if(row.item_code.upper()=="TITLE")-%}	
 			<td style="text-align: right;">{{ row.get_formatted(" ") }}</td>
 			<td style="text-align: right;">{{ row.get_formatted(" ") }}</td>
 			<td style="text-align: right;">{{ row.get_formatted(" ") }}</td>
