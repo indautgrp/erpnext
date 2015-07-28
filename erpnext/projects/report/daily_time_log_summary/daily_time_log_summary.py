@@ -13,10 +13,18 @@ def execute(filters=None):
 		filters["from_time"] = "00:00:00"
 		filters["to_time"] = "23:59:59"
 
-	columns = [_("Time Log") + ":Link/Time Log:120", _("Employee") + "::150", _("Date") + "::100",
-		_("Hours") + "::40", _("Activity Type") + "::200", _("Project") + ":Link/Project:180", _("Support Ticket") + ":Link/Support Ticket:120", 
-		_("Support Ticket Subject") + "::180", _("Task") + ":Link/Task:100",
-		_("Task Subject") + "::180", _("Status") + "::70", _("Note") + "::300"]
+	columns = [_("Time Log") + ":Link/Time Log:100", 
+		_("Employee") + "::150", 
+		_("Date") + "::100",
+		_("Hours") + "::60", 
+		_("Activity Type") + "::180", 
+		_("Project") + ":Link/Project:180", 
+		_("Support Ticket") + ":Link/Support Ticket:100", 
+		_("Support Ticket Subject") + "::180", 
+		_("Task") + ":Link/Task:100",
+		_("Task Subject") + "::180", 
+		_("Status") + "::70", 
+		_("Note") + "::300"]
 
 	
 	task_map = get_task_map()
