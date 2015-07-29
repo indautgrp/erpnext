@@ -50,15 +50,15 @@ def get_result(filters, account_details):
 
 def get_gl_entries(filters):
 	group_by_condition = "group by voucher_type, voucher_no, account" \
-		if filters.get("group_by_voucher") else "group by name"
+		if filters.get("group_by_voucher") else "group by `tabGL Entry`.name"
 
 	gl_entries = frappe.db.sql("""select posting_date, account,
 			sum(ifnull(debit, 0)) as debit, sum(ifnull(credit, 0)) as credit,
 			voucher_type, voucher_no, cost_center, project_name, support_ticket, remarks, is_opening, against,
 			root_type, report_type
-		from `tabGL Entry` gl, `tabAccount` acc
-		where gl.account = acc.name
-		and gl.company=%(company)s {conditions}
+		from `tabGL Entry`, `tabAccount`
+		where `tabGL Entry`.account = `tabAccount`.name
+		and `tabGL Entry`.company=%(company)s {conditions}
 		{group_by_condition}
 		order by posting_date, account"""\
 		.format(conditions=get_conditions(filters), group_by_condition=group_by_condition),
