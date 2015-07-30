@@ -312,13 +312,23 @@ class PurchaseInvoice(BuyingController):
 		stock_items = self.get_stock_items()
 		for item in self.get("entries"):
 			if flt(item.base_amount):
+				account_report_type = frappe.db.get_value("Account", item.expense_account, "report_type")
+				if account_report_type == "Profit and Loss":
+					project_name=item.project_name
+					support_ticket=item.support_ticket
+				else:
+					project_name=''
+					support_ticket=''
+					
 				gl_entries.append(
 					self.get_gl_dict({
 						"account": item.expense_account,
 						"against": self.credit_to,
 						"debit": item.base_amount,
 						"remarks": self.remarks,
-						"cost_center": item.cost_center
+						"cost_center": item.cost_center,
+						"project_name": project_name,
+						"support_ticket": support_ticket
 					})
 				)
 
