@@ -524,13 +524,23 @@ class SalesInvoice(SellingController):
 		# income account gl entries
 		for item in self.get("entries"):
 			if flt(item.base_amount):
+				account_report_type = frappe.db.get_value("Account", item.income_account, "report_type")
+				if account_report_type == "Profit and Loss":
+					project_name=self.project_name
+					support_ticket=self.support_ticket
+				else:
+					project_name=''
+					support_ticket=''
+					
 				gl_entries.append(
 					self.get_gl_dict({
 						"account": item.income_account,
 						"against": self.debit_to,
 						"credit": item.base_amount,
 						"remarks": self.remarks,
-						"cost_center": item.cost_center
+						"cost_center": item.cost_center,
+						"project_name": project_name,
+						"support_ticket": support_ticket
 					})
 				)
 
