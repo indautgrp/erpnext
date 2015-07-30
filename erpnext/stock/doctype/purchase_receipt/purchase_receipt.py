@@ -290,22 +290,42 @@ class PurchaseReceipt(BuyingController):
 				if warehouse_account.get(d.warehouse):
 
 					val_rate_db_precision = 6 if cint(self.precision("valuation_rate")) <= 6 else 9
+					
+					account_report_type = frappe.db.get_value("Account", warehouse_account[d.warehouse], "report_type")
+                    			if account_report_type == "Profit and Loss":
+                        			project_name=d.project_name
+                        			support_ticket=d.support_ticket
+                    			else:
+                        			project_name=''
+                        			support_ticket=''
 
 					# warehouse account
 					gl_entries.append(self.get_gl_dict({
 						"account": warehouse_account[d.warehouse],
 						"against": stock_rbnb,
 						"cost_center": d.cost_center,
+						"project_name": project_name,
+                        			"support_ticket": support_ticket,
 						"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 						"debit": flt(flt(d.valuation_rate, val_rate_db_precision) * flt(d.qty) * flt(d.conversion_factor),
 							self.precision("base_amount", d))
 					}))
+					
+					account_report_type = frappe.db.get_value("Account", stock_rbnb, "report_type")
+                    			if account_report_type == "Profit and Loss":
+                        			project_name=d.project_name
+                        			support_ticket=d.support_ticket
+                    			else:
+                        			project_name=''
+                        			support_ticket=''
 
 					# stock received but not billed
 					gl_entries.append(self.get_gl_dict({
 						"account": stock_rbnb,
 						"against": warehouse_account[d.warehouse],
 						"cost_center": d.cost_center,
+						"project_name": project_name,
+                        			"support_ticket": support_ticket,
 						"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 						"credit": flt(d.base_amount, self.precision("base_amount", d))
 					}))
@@ -314,20 +334,42 @@ class PurchaseReceipt(BuyingController):
 
 					# Amount added through landed-cost-voucher
 					if flt(d.landed_cost_voucher_amount):
+						
+						account_report_type = frappe.db.get_value("Account", expenses_included_in_valuation, "report_type")
+                        			if account_report_type == "Profit and Loss":
+                            				project_name=d.project_name
+                            				support_ticket=d.support_ticket
+                        			else:
+                            				project_name=''
+                            				support_ticket=''
+                            				
 						gl_entries.append(self.get_gl_dict({
 							"account": expenses_included_in_valuation,
 							"against": warehouse_account[d.warehouse],
 							"cost_center": d.cost_center,
+							"project_name": project_name,
+                        				"support_ticket": support_ticket,
 							"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 							"credit": flt(d.landed_cost_voucher_amount)
 						}))
 
 					# sub-contracting warehouse
 					if flt(d.rm_supp_cost) and warehouse_account.get(self.supplier_warehouse):
+						
+						account_report_type = frappe.db.get_value("Account", warehouse_account[self.supplier_warehouse], "report_type")
+                        			if account_report_type == "Profit and Loss":
+                            				project_name=d.project_name
+                            				support_ticket=d.support_ticket
+                        			else:
+                            				project_name=''
+                            				support_ticket=''
+                            				
 						gl_entries.append(self.get_gl_dict({
 							"account": warehouse_account[self.supplier_warehouse],
 							"against": warehouse_account[d.warehouse],
 							"cost_center": d.cost_center,
+							"project_name": project_name,
+                        				"support_ticket": support_ticket,
 							"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 							"credit": flt(d.rm_supp_cost)
 						}))
@@ -342,10 +384,21 @@ class PurchaseReceipt(BuyingController):
 
 						divisional_loss = flt(distributed_amount - sle_valuation_amount, self.precision("base_amount", d))
 						if divisional_loss:
+							
+							account_report_type = frappe.db.get_value("Account", stock_rbnb, "report_type")
+                            				if account_report_type == "Profit and Loss":
+                                				project_name=d.project_name
+                                				support_ticket=d.support_ticket
+                            				else:
+                                				project_name=''
+                                				support_ticket=''
+                                				
 							gl_entries.append(self.get_gl_dict({
 								"account": stock_rbnb,
 								"against": warehouse_account[d.warehouse],
 								"cost_center": d.cost_center,
+								"project_name": project_name,
+								"support_ticket": support_ticket,
 								"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 								"debit": divisional_loss
 							}))
