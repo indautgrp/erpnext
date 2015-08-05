@@ -14,8 +14,9 @@ def execute(filters=None):
 	source = get_source_data(filters)
 	item_sales_bom = get_item_sales_bom()
 
-	columns = [_("Delivery Note/Sales Invoice") + "::120", _("Link") + "::30", _("Posting Date") + ":Date", _("Posting Time"),
-		_("Item Code") + ":Link/Item", _("Item Name"), _("Description"), _("Warehouse") + ":Link/Warehouse",
+	columns = [_("Delivery Note/Sales Invoice") + "::120", _("Posting Date") + ":Date",
+		_("Item Code") + ":Link/Item:120", _("Item Name")+ "::150",_("Item Group") + ":Link/Item Group:125",
+        _("Description")+ "::150", _("Warehouse") + ":Link/Warehouse:100",
 		_("Qty") + ":Float", _("Selling Rate") + ":Currency", _("Avg. Buying Rate") + ":Currency",
 		_("Selling Amount") + ":Currency", _("Buying Amount") + ":Currency",
 		_("Gross Profit") + ":Currency", _("Gross Profit %") + ":Percent", _("Project") + ":Link/Project"]
@@ -42,10 +43,10 @@ def execute(filters=None):
 
 		icon = """<a href="%s"><i class="icon icon-share" style="cursor: pointer;"></i></a>""" \
 			% ("/".join(["#Form", row.parenttype, row.name]),)
-		data.append([row.name, icon, row.posting_date, row.posting_time, row.item_code, row.item_name,
+		data.append([row.name+icon, row.posting_date, row.item_code, row.item_name, row.item_group,
 			row.description, row.warehouse, row.qty, row.base_rate,
 			row.qty and (buying_amount / row.qty) or 0, row.base_amount, buying_amount,
-			gross_profit, gross_profit_percent, row.project])
+			gross_profit, gross_profit_percent, row.project_name])
 
 	return columns, data
 
@@ -93,7 +94,7 @@ def get_source_data(filters):
 
 	delivery_note_items = frappe.db.sql("""select item.parenttype, dn.name,
 		dn.posting_date, dn.posting_time, dn.project_name,
-		item.item_code, item.item_name, item.description, item.warehouse,
+		item.item_code,item.item_name, item.item_group,item.description, item.warehouse,
 		item.qty, item.base_rate, item.base_amount, item.name as "item_row",
 		timestamp(dn.posting_date, dn.posting_time) as posting_datetime
 		from `tabDelivery Note` dn, `tabDelivery Note Item` item
@@ -102,7 +103,7 @@ def get_source_data(filters):
 
 	sales_invoice_items = frappe.db.sql("""select item.parenttype, si.name,
 		si.posting_date, si.posting_time, si.project_name,
-		item.item_code, item.item_name, item.description, item.warehouse,
+		item.item_code, item.item_name,item.item_group, item.description, item.warehouse,
 		item.qty, item.base_rate, item.base_amount, item.name as "item_row",
 		timestamp(si.posting_date, si.posting_time) as posting_datetime
 		from `tabSales Invoice` si, `tabSales Invoice Item` item
