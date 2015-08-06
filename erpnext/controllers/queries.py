@@ -158,7 +158,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters):
 
 	conditions = []
 
-	return frappe.db.sql("""select tabItem.name,
+	return frappe.db.sql("""select tabItem.name, tabItem.item_group,
 		if(length(tabItem.item_name) > 40,
 			concat(substr(tabItem.item_name, 1, 40), "..."), item_name) as item_name,
 		if(length(tabItem.description) > 40, \
@@ -279,4 +279,3 @@ def get_account_list(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.widgets.reportview.execute("Account", filters = filter_list,
 		fields = ["name", "parent_account"],
 		limit_start=start, limit_page_length=page_len, as_list=True)
-
