@@ -40,7 +40,9 @@ def execute(filters=None):
 
 			if abs(flt(outstanding_amount)) > 0.01:
 				paid_amount = invoiced_amount - outstanding_amount
-				row = [gle.posting_date, gle.account, gle.voucher_type, gle.voucher_no, 
+                		icon="""<a href="%s"><i class="icon icon-share" style="cursor: pointer;"></i></a>""" \
+		                	% ("/".join(["#Form", gle.voucher_type, gle.voucher_no]),)
+				row = [gle.posting_date, gle.account, gle.voucher_type, gle.voucher_no+icon,
 					voucher_details.get("due_date", ""), voucher_details.get("bill_no", ""), 
 					voucher_details.get("bill_date", ""), invoiced_amount, 
 					paid_amount, outstanding_amount]
@@ -60,16 +62,12 @@ def execute(filters=None):
 				row += [account_supplier_type_map.get(gle.account), gle.remarks]
 				data.append(row)
 
-	for i in range(0, len(data)):
-		data[i].insert(4, """<a href="%s"><i class="icon icon-share" style="cursor: pointer;"></i></a>""" \
-			% ("/".join(["#Form", data[i][2], data[i][3]]),))
-
 	return columns, data
 	
 def get_columns(supplier_naming_by):
 	columns = [
 		_("Posting Date") + ":Date:80", _("Account") + ":Link/Account:150", _("Voucher Type") + "::110", 
-		_("Voucher No") + "::120", "::30", _("Due Date") + ":Date:80", _("Bill No") + "::80", _("Bill Date") + ":Date:80", 
+		_("Voucher No") + "::120", _("Due Date") + ":Date:80", _("Bill No") + "::80", _("Bill Date") + ":Date:80",
 		_("Invoiced Amount") + ":Currency:100", _("Paid Amount") + ":Currency:100", 
 		_("Outstanding Amount") + ":Currency:100", _("Age") + ":Int:50", "0-30:Currency:100", 
 		"30-60:Currency:100", "60-90:Currency:100", _("90-Above") + ":Currency:100",
