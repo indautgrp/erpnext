@@ -167,6 +167,7 @@ def item_query(doctype, txt, searchfield, start, page_len, filters):
 		where tabItem.docstatus < 2
 			and (tabItem.end_of_life > %(today)s or ifnull(tabItem.end_of_life, '0000-00-00')='0000-00-00')
 			and (tabItem.`{key}` LIKE %(txt)s
+			    or tabItem.item_group LIKE %(txt)s
 				or tabItem.item_name LIKE %(txt)s
 				or tabItem.description LIKE %(txt)s)
 			{fcond} {mcond}
@@ -279,3 +280,4 @@ def get_account_list(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.widgets.reportview.execute("Account", filters = filter_list,
 		fields = ["name", "parent_account"],
 		limit_start=start, limit_page_length=page_len, as_list=True)
+
