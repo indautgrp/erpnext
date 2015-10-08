@@ -17,9 +17,25 @@ def execute(filters=None):
 
 	data = []
 	for d in item_list:
+
+		if d.delivery_note:
+
+			delivery_note = d.delivery_note
+
+		elif d.sales_order:
+
+			tmp_delivery_note=frappe.db.sql("""select parent from `tabDelivery Note Item`
+			                        where prevdoc_detail_docname = %(so_detail)s
+			                        and against_sales_order = %(sales_order)s""", {
+				                        "so_detail": d.so_detail,
+				                        "sales_order": d.sales_order
+			                            })
+			
+        		delivery_note = tmp_delivery_note
+
 		row = [d.item_code, d.item_name, d.item_group, d.parent, d.posting_date,d.customer,
 			d.customer_name, d.debit_to, d.territory, d.project_name, d.company, d.sales_order,
-			d.delivery_note, d.income_account, d.qty, d.base_rate, d.base_amount]
+			delivery_note, d.income_account, d.qty, d.base_rate, d.base_amount]
 
 		for tax in tax_accounts:
 			row.append(item_tax.get(d.parent, {}).get(d.item_code, {}).get(tax, 0))
@@ -59,7 +75,7 @@ def get_items(filters):
 	return frappe.db.sql("""select si_item.parent, si.posting_date, si.debit_to, si.project_name,
 		si.customer, si.remarks, si.territory, si.company, si.net_total, si_item.item_code, si_item.item_name,
 		si_item.item_group, si_item.sales_order, si_item.delivery_note, si_item.income_account,
-		si_item.qty, si_item.base_rate, si_item.base_amount, si.customer_name
+		si_item.qty, si_item.base_rate, si_item.base_amount, si.customer_name, si_item.so_detail
 		from `tabSales Invoice` si, `tabSales Invoice Item` si_item
 		where si.name = si_item.parent and si.docstatus = 1 %s
 		order by si.posting_date desc, si_item.item_code desc""" % conditions, filters, as_dict=1)
