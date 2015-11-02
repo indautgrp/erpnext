@@ -18,6 +18,7 @@ def execute(filters=None):
 	data = []
 	for d in item_list:
 
+		delivery_note=''
 		if d.delivery_note:
 
 			delivery_note = d.delivery_note
@@ -30,8 +31,10 @@ def execute(filters=None):
 				                        "so_detail": d.so_detail,
 				                        "sales_order": d.sales_order
 			                            })
-			
-        		delivery_note = tmp_delivery_note
+			if tmp_delivery_note:
+        			delivery_note = tmp_delivery_note
+			else:
+				delivery_note = ''
 
 		row = [d.item_code, d.item_name, d.item_group, d.parent, d.posting_date,d.customer,
 			d.customer_name, d.debit_to, d.territory, d.project_name, d.company, d.sales_order,
