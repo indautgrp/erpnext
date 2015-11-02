@@ -19,7 +19,7 @@ def execute(filters=None):
 	data = []
 	for d in item_list:
 		expense_account = d.expense_account or aii_account_map.get(d.company)
-		
+		purchase_receipt=''
 		if d.purchase_receipt:
 
 			purchase_receipt = d.purchase_receipt
@@ -32,8 +32,10 @@ def execute(filters=None):
 				                        "po_detail": d.po_detail,
 				                        "purchase_order": d.purchase_order
 			                            })
-			
-        		purchase_receipt = tmp_purchase_receipt
+			if tmp_purchase_receipt:
+        			purchase_receipt = tmp_purchase_receipt
+			else:
+				purchase_receipt = ''
 		
 
 		row = [d.item_code, d.item_name, d.item_group, d.parent, d.posting_date,d.supplier,
