@@ -59,6 +59,8 @@ def check_if_in_list(gle, gl_map):
 				cstr(e.get('against_voucher'))==cstr(gle.get('against_voucher')) \
 				and cstr(e.get('against_voucher_type')) == \
 					cstr(gle.get('against_voucher_type')) \
+				and cstr(e.get('project_name'))==cstr(gle.get('project_name')) \
+				and cstr(e.get('support_ticket'))==cstr(gle.get('support_ticket')) \
 				and cstr(e.get('cost_center')) == cstr(gle.get('cost_center')):
 			return e
 
