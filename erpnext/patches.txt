@@ -93,3 +93,4 @@ erpnext.patches.v4_2.recalculate_bom_costs
 erpnext.patches.v4_2.discount_amount
 erpnext.patches.v4_2.update_landed_cost_voucher
 erpnext.patches.v4_2.set_item_has_batch
+erpnext.patches.v4_2.fix_gl_entries_for_jv_transactions
