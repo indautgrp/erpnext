@@ -59,7 +59,7 @@ class PricingRule(Document):
 					self.set(f, None)
 
 	def validate_price_or_discount(self):
-		for field in ["Price", "Discount Percentage"]:
+		for field in ["Price"]:
 			if flt(self.get(frappe.scrub(field))) < 0:
 				throw(_("{0} can not be negative").format(field))
 
@@ -168,7 +168,11 @@ def get_pricing_rules(args):
 		field = frappe.scrub(parenttype)
 		condition = ""
 		if args.get(field):
-			lft, rgt = frappe.db.get_value(parenttype, args[field], ["lft", "rgt"])
+			try:
+				lft, rgt = frappe.db.get_value(parenttype, args[field], ["lft", "rgt"])
+			except TypeError:
+				frappe.throw(_("Invalid {0}").format(args[field]))
+
 			parent_groups = frappe.db.sql_list("""select name from `tab%s`
 				where lft<=%s and rgt>=%s""" % (parenttype, '%s', '%s'), (lft, rgt))
 

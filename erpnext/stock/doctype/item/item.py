@@ -85,6 +85,8 @@ class Item(WebsiteGenerator):
 
 	def make_thumbnail(self):
 		"""Make a thumbnail of `website_image`"""
+		import requests.exceptions
+
 		if not self.is_new() and self.website_image != frappe.db.get_value(self.doctype, self.name, "website_image"):
 			self.thumbnail = None
 
@@ -102,8 +104,12 @@ class Item(WebsiteGenerator):
 				# cleanup
 				frappe.local.message_log.pop()
 
+			except requests.exceptions.HTTPError:
+				frappe.msgprint(_("Warning: Invalid Attachment {0}").format(self.website_image))
+				self.website_image = None
+
 			# for CSV import
-			if not file_doc:
+			if self.website_image and not file_doc:
 				try:
 					file_doc = frappe.get_doc({
 						"doctype": "File",
@@ -391,9 +397,6 @@ class Item(WebsiteGenerator):
 		frappe.db.sql("""update `tabItem Price` set item_name=%s,
 			item_description=%s, modified=NOW() where item_code=%s""",
 			(self.item_name, self.description, self.name))
-
-	def get_tax_rate(self, tax_type):
-		return { "tax_rate": frappe.db.get_value("Account", tax_type, "tax_rate") }
 
 	def on_trash(self):
 		super(Item, self).on_trash()
