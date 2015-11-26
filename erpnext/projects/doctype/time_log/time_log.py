@@ -19,7 +19,7 @@ class TimeLog(Document):
 	def validate(self):
 		self.set_status()
 		self.set_title()
-		self.validate_overlap()
+		#self.validate_overlap()
 		self.validate_timings()
 		self.calculate_total_hours()
 		self.validate_time_log_for()
@@ -64,10 +64,22 @@ class TimeLog(Document):
 		from frappe.utils import get_fullname
 		if self.production_order:
 			self.title = _("{0} for {1}").format(self.operation, self.production_order)
-		elif self.activity_type and (self.task or self.project):
-			self.title = _("{0} for {1}").format(self.activity_type, self.task or self.project)
+		elif self.activity_type and self.task and self.project and self.support_ticket:
+			self.title = _("{0} for {1} for {2} for {3}").format(self.activity_type, self.task, self.project,self.support_ticket)
+		elif self.activity_type and self.task and self.project:
+			self.title = _("{0} for {1} for {2}").format(self.activity_type, self.task,self.project)
+		elif self.activity_type and self.task and self.support_ticket:
+			self.title = _("{0} for {1} for {2}").format(self.activity_type, self.task,self.support_ticket)
+		elif self.activity_type and self.project and self.support_ticket:
+			self.title = _("{0} for {1} for {2}").format(self.activity_type, self.project,self.support_ticket)
+		elif self.activity_type and self.task:
+			self.title = _("{0} for {1}").format(self.activity_type, self.task)
+		elif self.activity_type and self.project:
+			self.title = _("{0} for {1}").format(self.activity_type, self.project)
+		elif self.activity_type and self.support_ticket:
+			self.title = _("{0} for {1}").format(self.activity_type, self.support_ticket)
 		else:
-			self.title = self.task or self.project or get_fullname(frappe.session.user)
+			self.title = self.activity_type or self.task or self.project or self.support_ticket or get_fullname(frappe.session.user)
 
 	def validate_overlap(self):
 		"""Checks if 'Time Log' entries overlap for a user, workstation. """
