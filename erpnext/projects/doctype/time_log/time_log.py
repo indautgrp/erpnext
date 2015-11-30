@@ -58,16 +58,21 @@ class TimeLog(Document):
 
 	def set_title(self):
 		"""Set default title for the Time Log"""
-		if self.title:
-			return
+		#if self.title:
+		#	return
 
 		from frappe.utils import get_fullname
 		if self.production_order:
 			self.title = _("{0} for {1}").format(self.operation, self.production_order)
-		elif self.activity_type and (self.task or self.project):
-			self.title = _("{0} for {1}").format(self.activity_type, self.task or self.project)
-		else:
-			self.title = self.task or self.project or get_fullname(frappe.session.user)
+		elif self.activity_type :
+			self.title = _("{0}").format(self.activity_type)
+		
+		if self.task:
+			self.title += " for " + self.task
+		if self.project:
+			self.title += " for " + self.project
+		if self.support_ticket:
+			self.title += " for " + self.support_ticket
 
 	def validate_overlap(self):
 		"""Checks if 'Time Log' entries overlap for a user, workstation. """
