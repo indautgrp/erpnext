@@ -182,7 +182,7 @@ def add_total_row(out, balance_must_be, period_list):
 
 		out[0]["total"]=""
 
-		row["total"]=total_column
+	row["total"]=total_column
 	out.append(row)
 
 	# blank row after Total
@@ -273,6 +273,13 @@ def get_columns(periodicity,period_list,accumulated_value):
 		"options": "Account",
 		"width": 300
 	}]
+	for period in period_list:
+		columns.append({
+			"fieldname": period.key,
+			"label": period.label,
+			"fieldtype": "Currency",
+			"width": 150
+		})
 	if periodicity!="Yearly":
 		if accumulated_value_ischecked == 0:
 			columns.append({
@@ -281,12 +288,4 @@ def get_columns(periodicity,period_list,accumulated_value):
 				"fieldtype": "Currency",
 				"width": 150
 			})
-	for period in period_list:
-		columns.append({
-			"fieldname": period.key,
-			"label": period.label,
-			"fieldtype": "Currency",
-			"width": 150
-		})
-
 	return columns
