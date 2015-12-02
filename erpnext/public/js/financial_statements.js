@@ -28,7 +28,7 @@ erpnext.financial_statements = {
 		},
 		{
 			"fieldname": "accumulated_value",
-			"label": __("Accumulated Value"),
+			"label": __("Accumulated Values"),
 			"fieldtype": "Check"
 		}
 	],
