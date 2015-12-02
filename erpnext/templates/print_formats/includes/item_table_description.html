@@ -4,6 +4,8 @@
 </div>
 {%- endif %}
 <div>
+	{% if (doc.item_code !="TITLE") -%}
+	
     {% if doc.in_format_data("item_code") and not doc.is_print_hide("item_code") -%}
     	<div class="primary">{{ doc.item_code }}</div>
     {%- endif %}
@@ -22,4 +24,9 @@
 	-%}
     <p>{{ doc.get_formatted("description") }}</p>
     {%- endif %}
+	
+	
+	{%- else -%}
+		<div class="primary">{{ doc.get_formatted("description") }}</div>
+	{%- endif %}	
 </div>
