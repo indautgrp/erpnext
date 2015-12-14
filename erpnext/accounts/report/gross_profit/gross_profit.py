@@ -14,9 +14,9 @@ def execute(filters=None):
 	source = gross_profit_data.grouped_data if filters.get("group_by") != "Invoice" else gross_profit_data.data
 
 	group_wise_columns = frappe._dict({
-		"invoice": ["parent", "customer", "posting_date", "posting_time", "item_code", "item_name", "brand", "description", \
+		"invoice": ["parent", "customer", "posting_date", "item_code", "item_name","item_group", "brand", "description", \
 			"warehouse", "qty", "base_rate", "buying_rate", "base_amount",
-			"buying_amount", "gross_profit", "gross_profit_percent", "project"],
+			"buying_amount", "gross_profit", "gross_profit_percent", "project_name"],
 		"item_code": ["item_code", "item_name", "brand", "description", "warehouse", "qty", "base_rate",
 			"buying_rate", "base_amount", "buying_amount", "gross_profit", "gross_profit_percent"],
 		"warehouse": ["warehouse", "qty", "base_rate", "buying_rate", "base_amount", "buying_amount",
@@ -55,7 +55,7 @@ def get_columns(group_wise_columns, filters):
 		"posting_time": _("Posting Time"),
 		"item_code": _("Item Code") + ":Link/Item",
 		"item_name": _("Item Name"),
-		"item_group": _("Item Group") + ":Link/Item",
+		"item_group": _("Item Group") + ":Link/Item Group",
 		"brand": _("Brand"),
 		"description": _("Description"),
 		"warehouse": _("Warehouse") + ":Link/Warehouse",
@@ -66,7 +66,7 @@ def get_columns(group_wise_columns, filters):
 		"buying_amount": _("Buying Amount") + ":Currency",
 		"gross_profit": _("Gross Profit") + ":Currency",
 		"gross_profit_percent": _("Gross Profit %") + ":Percent",
-		"project": _("Project") + ":Link/Project",
+		"project_name": _("Project") + ":Link/Project",
 		"sales_person": _("Sales person"),
 		"allocated_amount": _("Allocated Amount") + ":Currency",
 		"customer": _("Customer") + ":Link/Customer",
@@ -97,7 +97,8 @@ class GrossProfitGenerator(object):
 				continue
 
 			row.base_amount = flt(row.base_net_amount)
-
+			
+			product_bundles = []
 			if row.update_stock:
 				product_bundles = self.product_bundles.get(row.parenttype, {}).get(row.parent, frappe._dict())
 			elif row.dn_detail:
