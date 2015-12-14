@@ -308,7 +308,7 @@ class PurchaseReceipt(BuyingController):
 
 					val_rate_db_precision = 6 if cint(d.precision("valuation_rate")) <= 6 else 9
 
-					account_report_type = frappe.db.get_value("Account", warehouse_account[d.warehouse], "report_type")
+					account_report_type = frappe.db.get_value("Account", warehouse_account[d.warehouse]["name"], "report_type")
                     			if account_report_type == "Profit and Loss":
                         			project_name=d.project_name
                         			support_ticket=d.support_ticket
