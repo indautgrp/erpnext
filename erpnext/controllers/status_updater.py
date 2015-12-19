@@ -162,6 +162,7 @@ class StatusUpdater(Document):
 
 			msgprint(_("Allowance for over-{0} crossed for Item {1}.")
 				.format(args["overflow_type"], item["item_code"]))
+
 			throw(_("{0} must be reduced by {1} or you should increase overflow tolerance")
 				.format(_(item["target_ref_field"].title()), item["reduce_by"]))
 
@@ -172,7 +173,7 @@ class StatusUpdater(Document):
 		"""
 		for args in self.status_updater:
 			# condition to include current record (if submit or no if cancel)
-			if self.docstatus == 1:
+			if self.docstatus == 1 and self.is_recurring == 0:
 				args['cond'] = ' or parent="%s"' % self.name.replace('"', '\"')
 			else:
 				args['cond'] = ' and parent!="%s"' % self.name.replace('"', '\"')
