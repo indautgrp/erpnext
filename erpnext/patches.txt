@@ -24,6 +24,8 @@ erpnext.patches.v4_0.map_charge_to_taxes_and_charges
 execute:frappe.reload_doc('support', 'doctype', 'newsletter') # 2014-01-31
 execute:frappe.reload_doc('hr', 'doctype', 'employee') # 2014-02-03
 execute:frappe.db.sql("update tabPage set module='Core' where name='Setup'")
+erpnext.patches.v4_0.IAG_1_Patch_Update_Property_Setter
+erpnext.patches.v4_0.IAG_3_Patch_Update_Custom_Script
 
 # inserted this patch here since Item types are being changed
 erpnext.patches.v5_2.change_item_selects_to_checks
