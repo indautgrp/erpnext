@@ -173,10 +173,17 @@ class StatusUpdater(Document):
 		"""
 		for args in self.status_updater:
 			# condition to include current record (if submit or no if cancel)
-			if self.docstatus == 1 and self.is_recurring == 0:
-				args['cond'] = ' or parent="%s"' % self.name.replace('"', '\"')
+			if self.doctype == 'Sales Invoice':
+				if self.docstatus == 1 and self.is_recurring == 0:
+					args['cond'] = ' or parent="%s"' % self.name.replace('"', '\"')
+				else:
+					args['cond'] = ' and parent!="%s"' % self.name.replace('"', '\"')
 			else:
-				args['cond'] = ' and parent!="%s"' % self.name.replace('"', '\"')
+				if self.docstatus == 1:
+					args['cond'] = ' or parent="%s"' % self.name.replace('"', '\"')
+				else:
+					args['cond'] = ' and parent!="%s"' % self.name.replace('"', '\"')
+
 
 			if change_modified:
 				args['set_modified'] = ', modified = now(), modified_by = "{0}"'\
