@@ -7,7 +7,8 @@
 </div>
 {%- endif %}
 <div>
-	
+    {% if (doc.item_code !="TITLE") -%}
+
     {% if doc.in_format_data("item_code") and not doc.is_print_hide("item_code") -%}
     	<div class="primary"><strong>{{ doc.item_code }}</strong></div>
     {%- endif %}
@@ -35,4 +36,7 @@
         		{%- endif -%}
     		{%- endfor -%}
 	{%- endif %}
+     {%- else -%}
+	  <div class="primary">{{ doc.get_formatted("description") }}</div>
+     {%- endif %}
 </div>
