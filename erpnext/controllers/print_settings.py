@@ -9,7 +9,9 @@ def print_settings_for_item_table(doc):
 	
 	doc.print_templates = {
 		"description": "templates/print_formats/includes/item_table_description.html",
-		"qty": "templates/print_formats/includes/item_table_qty.html"
+		"qty": "templates/print_formats/includes/item_table_qty.html",
+		"rate": "templates/print_formats/includes/item_table_rate.html",
+		"amount": "templates/print_formats/includes/item_table_amount.html"
 	}
 	customised_print_preview = cint(frappe.db.get_value("Features Setup", None, "customised_print_preview"))
 	
