@@ -386,9 +386,12 @@ class SalesInvoice(SellingController):
 	def validate_warehouse(self):
 		super(SalesInvoice, self).validate_warehouse()
 
-		for d in self.get('items'):
-			if not d.warehouse:
-				frappe.throw(_("Warehouse required at Row No {0}").format(d.idx))
+		posting_date = frappe.db.sql("""select posting_date from `tabSales Invoice`
+				where name = %s """, (self.recurring_id))
+		if posting_date > '2015-12-21':
+			for d in self.get('items'):
+				if not d.warehouse:
+					frappe.throw(_("Warehouse required at Row No {0}").format(d.idx))
 
 	def validate_delivery_note(self):
 		for d in self.get("items"):
