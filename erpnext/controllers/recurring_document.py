@@ -44,7 +44,7 @@ def manage_recurring_documents(doctype, next_date=None, commit=True):
 	exception_list = []
 	for ref_document, recurring_id in recurring_documents:
 		if not frappe.db.sql("""select name from `tab%s`
-				where %s=%s and recurring_id=%s and docstatus=1"""
+				where %s=%s and recurring_id=%s and (docstatus=1 or docstatus=0)"""
 				% (doctype, date_field, '%s', '%s'), (next_date, recurring_id)):
 			try:
 				ref_wrapper = frappe.get_doc(doctype, ref_document)
@@ -52,7 +52,12 @@ def manage_recurring_documents(doctype, next_date=None, commit=True):
 					ref_wrapper.before_recurring()
 
 				new_document_wrapper = make_new_document(ref_wrapper, date_field, next_date)
-				send_notification(new_document_wrapper)
+				if doctype=='Sales Invoice':
+					if ref_wrapper.notify_by_email:
+						send_notification(new_document_wrapper)
+				else:
+					send_notification(new_document_wrapper)
+
 				if commit:
 					frappe.db.commit()
 			except:
@@ -97,6 +102,7 @@ def make_new_document(ref_wrapper, date_field, posting_date):
 		"to_date": to_date,
 		"fiscal_year": get_fiscal_year(posting_date)[0],
 		"owner": ref_wrapper.owner,
+		"next_date": get_next_date(from_date, mcount,cint(ref_wrapper.repeat_on_day_of_month))
 	})
 
 	if ref_wrapper.doctype == "Sales Order":
@@ -105,7 +111,11 @@ def make_new_document(ref_wrapper, date_field, posting_date):
 				cint(ref_wrapper.repeat_on_day_of_month))
 	})
 
-	new_document.submit()
+	if ref_wrapper.doctype == "Sales Invoice" and not ref_wrapper.notify_by_email:
+		new_document.docstatus=0
+		new_document.insert()
+	else:
+		new_document.submit()
 
 	return new_document
 
@@ -176,18 +186,20 @@ def convert_to_recurring(doc, posting_date):
 #
 
 def validate_notification_email_id(doc):
-	if doc.notification_email_address:
-		email_list = split_emails(doc.notification_email_address.replace("\n", ""))
+	if (doc.doctype=='Sales Invoice' and doc.notify_by_email) or (doc.doctype in ('Sales Order','Purchase Order','Purchase Invoice')):
+		if doc.notification_email_address:
+			email_list = filter(None, [cstr(email).strip() for email in
+				doc.notification_email_address.replace("\n", "").split(",")])
 
-		from frappe.utils import validate_email_add
-		for email in email_list:
-			if not validate_email_add(email):
-				throw(_("{0} is an invalid email address in 'Notification \
-					Email Address'").format(email))
+			from frappe.utils import validate_email_add
+			for email in email_list:
+				if not validate_email_add(email):
+					throw(_("{0} is an invalid email address in 'Notification \
+						Email Address'").format(email))
 
-	else:
-		frappe.throw(_("'Notification Email Addresses' not specified for recurring %s") \
-			% doc.doctype)
+		else:
+			frappe.throw(_("'Notification Email Addresses' not specified for recurring %s") \
+				% doc.doctype)
 
 def set_next_date(doc, posting_date):
 	""" Set next date on which recurring document will be created"""
@@ -195,7 +207,7 @@ def set_next_date(doc, posting_date):
 	if not doc.repeat_on_day_of_month:
 		msgprint(_("Please enter 'Repeat on Day of Month' field value"), raise_exception=1)
 
-	next_date = get_next_date(posting_date, month_map[doc.recurring_type],
+	next_date = doc.next_date or get_next_date(doc.from_date, month_map[doc.recurring_type],
 		cint(doc.repeat_on_day_of_month))
 
 	frappe.db.set(doc, 'next_date', next_date)
