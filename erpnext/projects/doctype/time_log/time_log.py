@@ -21,7 +21,7 @@ class TimeLog(Document):
 		self.set_status()
 		self.set_title()				
 		mSimplified_time_log = cint(frappe.db.get_value("Project Settings", None, "simplified_time_log"))
-		if mSimplified_time_log == 1:
+		if mSimplified_time_log == 0:
 			self.validate_overlap()
 		self.validate_timings()
 		self.calculate_total_hours()
