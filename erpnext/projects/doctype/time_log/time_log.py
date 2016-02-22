@@ -4,7 +4,8 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from frappe.utils import cstr, flt, get_datetime, get_time, getdate, cint
+from datetime import datetime,timedelta
+from frappe.utils import cstr, flt, get_datetime, get_time, getdate, cint ,get_defaults
 from dateutil.relativedelta import relativedelta
 from erpnext.manufacturing.doctype.manufacturing_settings.manufacturing_settings import get_mins_between_operations
 from frappe.custom.doctype.property_setter.property_setter import make_property_setter
@@ -20,8 +21,7 @@ class TimeLog(Document):
 	def validate(self):
 		self.set_status()
 		self.set_title()				
-		mSimplified_time_log = cint(frappe.db.get_value("Project Settings", None, "simplified_time_log"))
-		if mSimplified_time_log == 0:
+		if not(cint(get_defaults("fs_simplified_time_log"))):
 			self.validate_overlap()
 		self.validate_timings()
 		self.calculate_total_hours()
@@ -275,7 +275,27 @@ def get_events(start, end, filters=None):
 			"start": start,
 			"end": end
 			}, as_dict=True, update={"allDay": 0})
-
+	#aligns the assorted time logs so they are layed out sequentially
+	if(cint(get_defaults("fs_simplified_time_log"))):
+		slist = {}
+		for idx,da in enumerate(data):
+			if (da.employee not in slist):
+				slist[da.employee]={}
+			if (da.date_worked not in slist[da.employee]):
+				slist[da.employee][da.date_worked]=[]
+			slist[da.employee][da.date_worked].append([idx,da.from_time,da.to_time,da.hours])	
+		for e in slist:
+			for d in slist[e]:
+				temp = slist[e][d][0]
+				temp[1]= datetime.combine(d,get_time("8:00:00"))
+				temp[2]= temp[1] + timedelta(hours=temp[3])
+				for idx,l in enumerate(slist[e][d][1:]):
+					data[l[0]]["from_time"]= l[1] = slist[e][d][idx][2]
+					data[l[0]]["to_time"] = l[2] = l[1]+ timedelta(hours=l[3])
+				l= slist[e][d][0]
+				data[temp[0]]["from_time"]= slist[e][d][0][1]
+				data[temp[0]]["to_time"] =  slist[e][d][0][2]
+	
 	for d in data:
 		d.title = d.name + ": " + (d.activity_type or d.production_order or "")
 		if d.task:
