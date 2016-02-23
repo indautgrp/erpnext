@@ -269,7 +269,7 @@ def get_events(start, end, filters=None):
 	conditions = get_event_conditions("Time Log", filters)
 
 	data = frappe.db.sql("""select name, from_time, to_time,
-		activity_type, task, project, production_order, workstation from `tabTime Log`
+		activity_type, task, project, production_order, workstation, date_worked, employee, hours from `tabTime Log`
 		where docstatus < 2 and ( from_time between %(start)s and %(end)s or to_time between %(start)s and %(end)s )
 		{conditions}""".format(conditions=conditions), {
 			"start": start,
