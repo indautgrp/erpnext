@@ -70,6 +70,8 @@ class TimeLog(Document):
 		elif self.activity_type :
  			self.title = _("{0}").format(self.activity_type)
  		
+ 		if self.quotation_:
+ 			self.title += " for " + self.quotation_
  		if self.task:
  			self.title += " for " + self.task
  		if self.project:
