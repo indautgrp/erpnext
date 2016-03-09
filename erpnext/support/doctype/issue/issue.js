@@ -9,9 +9,8 @@ frappe.ui.form.on("Issue", {
 	"status": function(frm) {dialog(frm)}
 });
 function dialog(frm){
-        status = frm.doc.status
     var d = new frappe.ui.Dialog({
-                    title: __("Details for "+ status),
+                    title: __("Details for "+ frm.doc.status),
                     fields: [
                         {
                             "fieldtype": "Text",
