@@ -20,8 +20,7 @@ function dialog(frm){
                         },
                         {
                             "fieldtype": "Button",
-                            "label": __("Submit"),
-                            "name":"Button1"
+                            "label": __("Submit")
                         }
                     ]
                 });
@@ -32,7 +31,6 @@ function dialog(frm){
                         return
                     }
                     cur_frm.doc.resolution_details = d.get_value("resolution_details")
-                    console.log(d.get_value("resolution_details"))
                     frappe.call({
                         method: 'create_resolution',
                         doc: cur_frm.doc,
