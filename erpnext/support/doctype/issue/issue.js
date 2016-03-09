@@ -16,7 +16,7 @@ function dialog(frm){
                             "fieldtype": "Text",
                             "label": __("Resolution Details"),
                             "reqd": 1,
-							"name":"resolution_details"
+			    "name":"resolution_details"
                         },
                         {
                             "fieldtype": "Button",
