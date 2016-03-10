@@ -72,7 +72,7 @@ def get_item_details():
 		stock_uom, manufacturer, manufacturer_part_no, itg.parent_website_route as parent_website_route, \
 		its.supplier as supplier, su.supplier_name as supplier_name, its.supplier_part_no as supplier_part_no \
 		from tabItem it, `tabItem Group` itg, `tabItem Supplier` its, `tabSupplier` su \
-        	where it.item_group = itg.name and it.name=its.parent and its.supplier=su.name \
+        	where it.item_group = itg.name and it.name=its.parent and its.supplier=su.name and it.disabled = 0\
 		order by it.item_group, item_code", as_dict=1):
 			item_map.setdefault(i.name+i.supplier, i)
 
