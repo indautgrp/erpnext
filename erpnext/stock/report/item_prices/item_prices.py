@@ -11,7 +11,6 @@ def execute(filters=None):
 
 	columns = get_columns(filters)
 	item_map = get_item_details()
-	sn = get_supplier_name()
 	pl = get_price_list()
 	last_purchase_rate = get_last_purchase_rate()
 	bom_rate = get_item_bom_rate()
@@ -21,20 +20,20 @@ def execute(filters=None):
 	precision = get_currency_precision() or 2
 	data = []
 	for item in sorted(item_map):
-		data.append([item, item_map[item]["item_name"],item_map[item]["item_group"],
+		data.append([item_map[item]["name"], item_map[item]["item_name"],item_map[item]["item_group"],
 			item_map[item]["description"],
 			flt(last_purchase_rate.get(item, 0), precision),
-			sn.get(item, {}).get("supplier"),
-			sn.get(item, {}).get("supplier_name"),
-			sn.get(item, {}).get("supplier_part_no"),
-			pl.get(item, {}).get("Selling"),
-			pl.get(item, {}).get("Buying"),
+			item_map[item]["supplier"],
+			item_map[item]["supplier_name"],
+			item_map[item]["supplier_part_no"],
+			pl.get(item_map[item]["name"], {}).get("Selling"),
+			pl.get(item_map[item]["name"], {}).get("Buying"),
 			item_map[item]["manufacturer"],
 			item_map[item]["manufacturer_part_no"],
 			item_map[item]["stock_uom"],
-			flt(val_rate_map.get(item, {}).get("balance_qty"), precision),
-            flt(val_rate_map.get(item, {}).get("val_rate"), precision),
-			flt(bom_rate.get(item, 0), precision),
+			flt(val_rate_map.get(item_map[item]["name"], {}).get("balance_qty"), precision),
+            flt(val_rate_map.get(item_map[item]["name"], {}).get("val_rate"), precision),
+			flt(bom_rate.get(item_map[item]["name"], 0), precision),
             item_map[item]["parent_website_route"]
 		])
 
@@ -52,8 +51,8 @@ def get_columns(filters):
 		_("Supplier") + ":Link/Supplier:100",
 		_("Supplier Name") + "::150",
 		_("Supplier Part No") + "::125",
-		_("Sales Price List") + "::80",
-		_("Purchase Price List") + "::80",
+		_("Sales Price List") + "::180",
+		_("Purchase Price List") + "::180",
 		_("Manufacturer") + "::100",
 		_("Manufacturer Part No") + "::100",
 		_("UOM") + ":Link/UOM:80",
@@ -70,10 +69,12 @@ def get_item_details():
 	item_map = {}
 
 	for i in frappe.db.sql("select it.item_group as item_group, it.name as name, item_name, it.description as description, \
-		stock_uom, manufacturer, manufacturer_part_no, itg.parent_website_route as parent_website_route from tabItem it, `tabItem Group` itg \
-        where it.item_group = itg.name \
+		stock_uom, manufacturer, manufacturer_part_no, itg.parent_website_route as parent_website_route, \
+		its.supplier as supplier, su.supplier_name as supplier_name, its.supplier_part_no as supplier_part_no \
+		from tabItem it, `tabItem Group` itg, `tabItem Supplier` its, `tabSupplier` su \
+        	where it.item_group = itg.name and it.name=its.parent and its.supplier=su.name \
 		order by it.item_group, item_code", as_dict=1):
-			item_map.setdefault(i.name, i)
+			item_map.setdefault(i.name+i.supplier, i)
 
 	return item_map
 
@@ -83,9 +84,9 @@ def get_price_list():
 	rate = {}
 
 	price_list = frappe.db.sql("""select ip.item_code, ip.buying, ip.selling,
-		concat(ip.price_list, " - ", ip.currency, " ", ip.price_list_rate) as price
-		from `tabItem Price` ip, `tabPrice List` pl
-		where ip.price_list=pl.name and pl.enabled=1""", as_dict=1)
+		concat(cu.symbol, " ", round(ip.price_list_rate,2), " - ", ip.price_list) as price
+		from `tabItem Price` ip, `tabPrice List` pl, `tabCurrency` cu
+		where ip.price_list=pl.name and pl.currency=cu.name and pl.enabled=1""", as_dict=1)
 
 	for j in price_list:
 		if j.price:
@@ -105,11 +106,13 @@ def get_last_purchase_rate():
 
 	query = """select * from (select
 					result.item_code,
+					result.supplier,
 					result.base_rate
 					from (
 						(select
 							po_item.item_code,
 							po_item.item_name,
+							po.supplier,
 							po.transaction_date as posting_date,
 							po_item.base_price_list_rate,
 							po_item.discount_percentage,
@@ -120,6 +123,7 @@ def get_last_purchase_rate():
 						(select
 							pr_item.item_code,
 							pr_item.item_name,
+							pr.supplier,
 							pr.posting_date,
 							pr_item.base_price_list_rate,
 							pr_item.discount_percentage,
@@ -128,10 +132,10 @@ def get_last_purchase_rate():
 						where pr.name = pr_item.parent and pr.docstatus = 1)
 				) result
 				order by result.item_code asc, result.posting_date desc) result_wrapper
-				group by item_code"""
+				group by item_code, supplier"""
 
 	for d in frappe.db.sql(query, as_dict=1):
-		item_last_purchase_rate_map.setdefault(d.item_code, d.base_rate)
+		item_last_purchase_rate_map.setdefault(d.item_code+d.supplier, d.base_rate)
 
 	return item_last_purchase_rate_map
 
@@ -159,16 +163,3 @@ def get_valuation_rate():
 
 	return item_val_rate_map
 
-def get_supplier_name():
-	"""returns supplier name"""
-
-	supplier_name_map = {}
-
-	for i in frappe.db.sql("""select it.parent, it.supplier, su.supplier_name, it.supplier_part_no \
-		from `tabItem Supplier` it, `tabSupplier` su where it.supplier=su.name\
-		order by parent, supplier""", as_dict=1):
-			supplier_name_map.setdefault(i.parent, {}).setdefault("supplier", i.supplier)
-			supplier_name_map.setdefault(i.parent, {}).setdefault("supplier_name", i.supplier_name)
-			supplier_name_map.setdefault(i.parent, {}).setdefault("supplier_part_no", i.supplier_part_no)
-
-	return supplier_name_map
