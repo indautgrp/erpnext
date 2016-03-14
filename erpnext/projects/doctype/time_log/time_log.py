@@ -270,10 +270,14 @@ def get_events(start, end, filters=None):
 	from frappe.desk.calendar import get_event_conditions
 	conditions = get_event_conditions("Time Log", filters)
 
+	if (cint(get_defaults("fs_simplified_time_log"))):
+		date_cond = "date_worked between %(start)s and %(end)s"
+	else:
+		date_cond = "( from_time between %(start)s and %(end)s or to_time between %(start)s and %(end)s )"
 	data = frappe.db.sql("""select name, from_time, to_time,
 		activity_type, task, project, production_order, workstation, date_worked, employee, hours from `tabTime Log`
-		where docstatus < 2 and ( from_time between %(start)s and %(end)s or to_time between %(start)s and %(end)s )
-		{conditions}""".format(conditions=conditions), {
+		where docstatus < 2 and {date_cond}
+		{conditions}""".format(conditions=conditions,date_cond=date_cond), {
 			"start": start,
 			"end": end
 			}, as_dict=True, update={"allDay": 0})
