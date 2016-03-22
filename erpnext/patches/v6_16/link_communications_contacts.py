@@ -1,25 +1,12 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from frappe.model.document import Document
-import sys
-sys.path.append('/home/erpnext/frappe-bench/pycharm-debug.egg')
-import pydevd
-
 def execute():
-	#frappe.db.sql("ALTER TABLE tabCommunication ADD (customer VARCHAR(140), supplier VARCHAR(140));")
-	#frappe.db.sql("""update `tabCommunication` as com, `tabContact` as tact
-	#					set com.customer = tact.customer,
-	#						com.supplier = tact.supplier
-	#					where substr(com.sender,  instr(com.sender,"<")+1,  if(instr(com.sender,"<")=0,  length(com.sender),length(com.sender)-1-instr(com.sender,"<"))) = tact.email_id
-	#					and (tact.supplier is not null or tact.customer is not null or tact.user is not null);""")
-
 
 
 	origin_contact = frappe.db.sql("select email_id,supplier,customer,user from `tabContact`",as_dict=1)
 	origin_communication = frappe.db.sql("select name, sender,recipients from `tabCommunication`",as_dict=1)
 
-	#pydevd.settrace('192.168.8.113', port=14000, stdoutToServer=True, stderrToServer=True)
 
 	contact = []
 	communication = []
