@@ -3,7 +3,9 @@ import frappe
 from frappe import _
 def execute():
 
-
+	frappe.reload_doctype("Communication")
+	#frappe.db.sql("ALTER TABLE tabCommunication ADD customer VARCHAR(140) NULL;")
+	#frappe.db.sql("ALTER TABLE tabCommunication ADD supplier VARCHAR(140) NULL;")
 	origin_contact = frappe.db.sql("select email_id,supplier,customer,user from `tabContact`",as_dict=1)
 	origin_communication = frappe.db.sql("select name, sender,recipients from `tabCommunication`",as_dict=1)
 
