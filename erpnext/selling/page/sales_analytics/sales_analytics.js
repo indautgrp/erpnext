@@ -100,7 +100,6 @@ erpnext.SalesAnalytics = frappe.views.TreeGridReport.extend({
 		{fieldtype:"Select", fieldname: "company", label: __("Company"), link:"Company",
 			default_value: __("Select Company...")},
 		{fieldtype:"Date", fieldname: "from_date", label: __("From Date")},
-		{fieldtype:"Label", fieldname: "to", label: __("To")},
 		{fieldtype:"Date", fieldname: "to_date", label: __("To Date")},
 		{fieldtype:"Select", label: __("Range"), fieldname: "range",
 			options:[{label: __("Daily"), value: "Daily"}, {label: __("Weekly"), value: "Weekly"},
