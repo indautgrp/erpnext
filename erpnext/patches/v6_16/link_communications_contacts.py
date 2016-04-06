@@ -1,58 +1,40 @@
 from __future__ import unicode_literals
 import frappe
-from frappe import _
 def execute():
-
 	frappe.reload_doctype("Communication")
 	origin_contact = frappe.db.sql("select email_id,supplier,customer,user from `tabContact`",as_dict=1)
 	origin_communication = frappe.db.sql("select name, sender,recipients from `tabCommunication`",as_dict=1)
 
+	for  communication in origin_communication:
 
-	contact = []
-	communication = []
+		sender = communication["sender"]
+		recipients = communication["recipients"]
+		# format contacts
+		for comm in origin_contact:
+			if comm["user"] is None and comm["email_id"]:
+				if (sender and sender.find(comm["email_id"]) > -1) or (recipients and recipients.find(comm["email_id"]) > -1):
+					if comm["supplier"] and comm["customer"]:
+						frappe.db.sql("""update `tabCommunication`
+							set supplier = %(supplier)s,
+							customer = %(customer)s
+							where name = %(name)s""", {
+							"supplier": comm["supplier"],
+							"customer": comm["customer"],
+							"name": communication["name"]
+						})
 
-	#format contacts
-	for comm in origin_contact:
-		if (comm["user"]==None):
-			temp = {}
-			temp["email_id"] = comm["email_id"]
-			temp["supplier"] = comm["supplier"]
-			temp["customer"] = comm["customer"]
-			contact.append(temp)
+					elif comm["supplier"]:
+						frappe.db.sql("""update `tabCommunication`
+							set supplier = %(supplier)s
+							where name = %(name)s""", {
+							"supplier": comm["supplier"],
+							"name": communication["name"]
+						})
 
-	#format sender
-	for comm in origin_communication:
-		temp = {}
-		if isinstance(comm["sender"],basestring) and comm["sender"].find("<")>-1:
-			temp["name"] = comm["name"]
-			temp["email"] = comm["sender"][comm["sender"].find("<")+1:comm["sender"].find(">")].lower() #not sure if lower needed
-			communication.append(temp)
-
-	#format reciepient
-	for comm in origin_communication:
-		if isinstance(comm["recipients"],basestring):
-			for r in comm["recipients"].split(','):
-				temp = {}
-				temp["name"] =comm["name"]
-				temp["email"] =r.lower() #not sure if lower needed
-				communication.append(temp)
-
-	for comm in communication:
-		for tact in contact:
-			#check each item and submit
-			if tact["email_id"]==comm["email"]:
-				if tact["supplier"]is not None:
-					frappe.db.sql("""update `tabCommunication`
-						set supplier = %(supplier)s
-						where name = %(name)s""",{
-						"supplier": tact["supplier"],
-						"name": comm["name"]
-					})
-				elif tact["customer"]is not None:
-					frappe.db.sql("""update `tabCommunication`
-						set customer = %(customer)s
-						where name = %(name)s""",{
-						"customer": tact["customer"],
-						"name": comm["name"]
-					})
-	passed = True
+					elif comm["customer"]:
+						frappe.db.sql("""update `tabCommunication`
+							set customer = %(customer)s
+							where name = %(name)s""", {
+							"customer": comm["customer"],
+							"name": communication["name"]
+						})
