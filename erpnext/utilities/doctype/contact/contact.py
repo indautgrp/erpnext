@@ -63,48 +63,42 @@ class Contact(StatusUpdater):
 	def update_communication_ref(self):
 		origin_communication = frappe.db.sql("select name, sender,recipients from `tabCommunication`",as_dict=1)
 
-		if self.email_id != "" or self.email_id is not None:
-
-			contact = [{"email_id":self.email_id,
+		if self.email_id:
+			comm = [{"email_id":self.email_id,
 						"supplier":self.supplier,
 						"customer":self.customer
 						}]
-			communication = []
-
-			#format sender
-			for comm in origin_communication:
-				temp = {}
-				if isinstance(comm["sender"],basestring) and comm["sender"].find("<")>-1:
-					temp["name"] = comm["name"]
-					temp["email"] = comm["sender"][comm["sender"].find("<")+1:comm["sender"].find(">")].lower() #not sure if lower needed
-					communication.append(temp)
-
-			#format reciepient
-			for comm in origin_communication:
-				if isinstance(comm["recipients"],basestring):
-					for r in comm["recipients"].split(','):
-						temp = {}
-						temp["name"] =comm["name"]
-						temp["email"] =r.lower() #not sure if lower needed
-						communication.append(temp)
-
-			for comm in communication:
-				for tact in contact:
-					#check each item and submit
-					if tact["email_id"]==comm["email"]:
-						if tact["supplier"]is not None:
+			for communication in origin_communication:
+				sender = communication["sender"]
+				recipients = communication["recipients"]
+				if comm["user"] is None and comm["email_id"]:
+					if (sender and sender.find(comm["email_id"]) > -1) or (recipients and recipients.find(comm["email_id"]) > -1):
+						if comm["supplier"] and comm["customer"]:
 							frappe.db.sql("""update `tabCommunication`
-								set supplier = %(supplier)s
-								where name = %(name)s""",{
-								"supplier": tact["supplier"],
-								"name": comm["name"]
+									set supplier = %(supplier)s,
+									customer = %(customer)s
+									where name = %(name)s""", {
+								"supplier": comm["supplier"],
+								"customer": comm["customer"],
+								"name": communication["name"]
 							})
-						elif tact["customer"]is not None:
+
+						elif comm["supplier"]:
+							# return {"supplier": comm["supplier"], "customer": None}
 							frappe.db.sql("""update `tabCommunication`
-								set customer = %(customer)s
-								where name = %(name)s""",{
-								"customer": tact["customer"],
-								"name": comm["name"]
+									set supplier = %(supplier)s
+									where name = %(name)s""", {
+								"supplier": comm["supplier"],
+								"name": communication["name"]
+							})
+
+						elif comm["customer"]:
+							# return {"supplier": None, "customer": comm["customer"]}
+							frappe.db.sql("""update `tabCommunication`
+									set customer = %(customer)s
+									where name = %(name)s""", {
+								"customer": comm["customer"],
+								"name": communication["name"]
 							})
 
 @frappe.whitelist()
