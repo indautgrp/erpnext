@@ -132,9 +132,12 @@ def get_dashboard_info(customer):
 
 	out = {}
 	for doctype in ["Opportunity", "Quotation", "Sales Order", "Delivery Note",
-		"Sales Invoice", "Project"]:
+		"Sales Invoice", "Project","Communication"]:
 		out[doctype] = frappe.db.get_value(doctype,
 			{"customer": customer, "docstatus": ["!=", 2] }, "count(*)")
+
+	out["Issue"] = frappe.db.get_value("Issue",
+			{"customer": customer}, "count(*)")
 
 	billing_this_year = frappe.db.sql("""
 		select sum(debit_in_account_currency) - sum(credit_in_account_currency)

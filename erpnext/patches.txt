@@ -241,6 +241,8 @@ erpnext.patches.v6_10.fix_delivery_status_of_drop_ship_item #2015-12-08
 erpnext.patches.v5_8.tax_rule #2015-12-08
 erpnext.patches.v6_12.set_overdue_tasks
 erpnext.patches.v6_16.update_billing_status_in_dn_and_pr
-erpnext.patches.v6_16.update_hide_toolbar_in_issingle_doctype
 erpnext.patches.v6_16.fix_outstanding_amout_for_sales_invoice
 erpnext.patches.v6_16.update_supplier_type_for_purchase_invoice
+
+# customer and supplier communications lookup
+erpnext.patches.v6_16.link_communications_contacts

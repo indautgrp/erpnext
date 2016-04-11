@@ -88,7 +88,7 @@ def get_dashboard_info(supplier):
 		frappe.throw(_("No permission"))
 
 	out = {}
-	for doctype in ["Supplier Quotation", "Purchase Order", "Purchase Receipt", "Purchase Invoice"]:
+	for doctype in ["Supplier Quotation", "Purchase Order", "Purchase Receipt", "Purchase Invoice","Communication"]:
 		out[doctype] = frappe.db.get_value(doctype,
 			{"supplier": supplier, "docstatus": ["!=", 2] }, "count(*)")
 

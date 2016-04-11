@@ -1,10 +1,7 @@
 frappe.listview_settings['Issue'] = {
 	colwidths: {"subject": 6},
+	filters:[["status","in","Open,Replied"]],
 	onload: function(listview) {
-		frappe.route_options = {
-			"status": ["in","Open,Replied"]
-		};
-
 		var method = "erpnext.support.doctype.issue.issue.set_multiple_status";
 
 		listview.page.add_menu_item(__("Set as Open"), function() {

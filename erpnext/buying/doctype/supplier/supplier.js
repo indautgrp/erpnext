@@ -31,6 +31,7 @@ cur_frm.cscript.make_dashboard = function(doc) {
 	cur_frm.dashboard.add_doctype_badge("Purchase Order", "supplier");
 	cur_frm.dashboard.add_doctype_badge("Purchase Receipt", "supplier");
 	cur_frm.dashboard.add_doctype_badge("Purchase Invoice", "supplier");
+	cur_frm.dashboard.add_doctype_badge("Communication", "supplier");
 
 	return frappe.call({
 		type: "GET",
