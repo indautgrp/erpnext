@@ -64,14 +64,14 @@ class Contact(StatusUpdater):
 		origin_communication = frappe.db.sql("select name, sender,recipients from `tabCommunication`",as_dict=1)
 
 		if self.email_id:
-			comm = [{"email_id":self.email_id,
+			comm = {"email_id":self.email_id,
 						"supplier":self.supplier,
 						"customer":self.customer
-						}]
+						}
 			for communication in origin_communication:
 				sender = communication["sender"]
 				recipients = communication["recipients"]
-				if comm["user"] is None and comm["email_id"]:
+				if comm["email_id"]:
 					if (sender and sender.find(comm["email_id"]) > -1) or (recipients and recipients.find(comm["email_id"]) > -1):
 						if comm["supplier"] and comm["customer"]:
 							frappe.db.sql("""update `tabCommunication`
