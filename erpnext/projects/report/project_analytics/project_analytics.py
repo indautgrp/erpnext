@@ -175,13 +175,19 @@ def get_project_list(filters):
 		if frappe.db.exists("Issue", d.worked_on):
 			subject = frappe.db.get_value("Issue",d.worked_on,"subject")
 			showing_label = d.worked_on + " " + subject
+			type = 'Issue'
+		elif d.worked_on == 'No Project/Issue Associated':
+			showing_label = d.worked_on
+			type = 'No Project/Issue'
 		else:
 			showing_label = d.worked_on
+			type = 'Project'
 
 		projects = frappe._dict({
 			"showing_label": showing_label, 
 			"worked_on": d.worked_on,
-                	"hours": d.hours
+                	"hours": d.hours,
+			"type": type
     		})
 		projects_list.append(projects)
 
@@ -265,6 +271,7 @@ def get_entries_project(filters,project_list):
 				"row_labels": project.worked_on,
 				"parent_labels": parent_labels,
 				"hours": project.hours,
+				"type": project.type,
 				"indent": 1
 			}
 			out.append(row)
@@ -320,9 +327,9 @@ def get_entries_project(filters,project_list):
 			d['hours'] = issue_hours
 
 	total_row = {"showing_labels": "Grand Total" ,"row_labels": "Grand Total", "parent_labels": None,"hours": grand_total,"indent":None}
-
+	
  	out.append(total_row)
-		
+
 	return out
 
 def build_conditions(filters, worked_on, employee):
