@@ -38,7 +38,7 @@ frappe.query_reports["Project Analytics"] = {
 		{
 			"fieldtype": "Link",
 			"fieldname": "employee",
-			"options": "Employee",
+			"options": "Week Range",
 			"label": __("Employee"),
 			"get_query": function() {
 				return {
