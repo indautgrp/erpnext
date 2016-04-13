@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 import frappe
+from datetime import timedelta
 from frappe.desk.reportview import get_match_cond
 from frappe.model.db_query import DatabaseQuery
 from frappe.utils import flt, getdate, nowdate
@@ -89,7 +90,7 @@ def customer_query(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.db.sql("""select {fields} from `tabCustomer`
 		where docstatus < 2
 			and ({key} like %(txt)s
-				or customer_name like %(txt)s)
+				or customer_name like %(txt)s) and disabled=0
 			{mcond}
 		order by
 			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
@@ -118,7 +119,7 @@ def supplier_query(doctype, txt, searchfield, start, page_len, filters):
 	return frappe.db.sql("""select {field} from `tabSupplier`
 		where docstatus < 2
 			and ({key} like %(txt)s
-				or supplier_name like %(txt)s)
+				or supplier_name like %(txt)s) and disabled=0
 			{mcond}
 		order by
 			if(locate(%(_txt)s, name), locate(%(_txt)s, name), 99999),
@@ -217,12 +218,8 @@ def get_delivery_notes_to_be_billed(doctype, txt, searchfield, start, page_len, 
 	return frappe.db.sql("""select `tabDelivery Note`.name, `tabDelivery Note`.customer_name
 		from `tabDelivery Note`
 		where `tabDelivery Note`.`%(key)s` like %(txt)s and
-			`tabDelivery Note`.docstatus = 1 and status not in ("Stopped", "Closed") %(fcond)s and
-			(ifnull((select sum(qty) from `tabDelivery Note Item` where
-					`tabDelivery Note Item`.parent=`tabDelivery Note`.name), 0) >
-				ifnull((select sum(qty) from `tabSales Invoice Item` where
-					`tabSales Invoice Item`.docstatus = 1 and
-					`tabSales Invoice Item`.delivery_note=`tabDelivery Note`.name), 0))
+			`tabDelivery Note`.docstatus = 1 and status not in ("Stopped", "Closed") %(fcond)s
+			and (`tabDelivery Note`.per_billed < 100 or `tabDelivery Note`.grand_total = 0)
 			%(mcond)s order by `tabDelivery Note`.`%(key)s` asc
 			limit %(start)s, %(page_len)s""" % {
 				"key": searchfield,
@@ -313,7 +310,14 @@ def get_worked_on(doctype, txt, searchfield, start, page_len, filters):
 def get_week_range(doctype, txt, searchfield, start, page_len, filters):
 
     	return frappe.db.sql("""select name from `tabWeek Range` order by idx""")
-    	
+
+def get_activity_type(doctype, txt, searchfield, start, page_len, filters):
+	
+	return frappe.db.sql("""select name,description from `tabActivity Type`
+		where name like %(txt)s or description like %(txt)s
+		order by name asc
+		limit %(start)s, %(page_len)s""", {"start":start, "page_len":page_len, "txt": "%{0}%".format(txt)})
+
 @frappe.whitelist()
 def get_income_account(doctype, txt, searchfield, start, page_len, filters):
 	from erpnext.controllers.queries import get_match_cond
