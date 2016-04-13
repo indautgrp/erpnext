@@ -33,7 +33,7 @@ def get_employees(filters, worked_on):
 	"""Get a list of dict {"employee_id": employee_id, "employee_name": employee_name, "hours": hours}"""
 	employees_list = []
 
-	additional_conditions = build_conditions(filters, worked_on, filters.employee)
+	additional_conditions = build_conditions(filters, worked_on, filters.employee, activity_type='')
 	
 	from_date = filters.from_date
 	to_date = filters.to_date
@@ -47,7 +47,7 @@ def get_employees(filters, worked_on):
 				and (employee_name is not null or employee_name !='')
 				group by employee,employee_name
 				order by employee_name""".format(additional_conditions=additional_conditions),
-				{"start": from_date, "end": to_date, "employee": filters.employee, "worked_on": worked_on}, as_dict=1):
+				{"start": from_date, "end": to_date, "employee": filters.employee,"activity": filters.activity, "worked_on": worked_on}, as_dict=1):
 		employees = frappe._dict({
 			"employee_id": d.employee,
                 	"employee_name": d.employee_name,
@@ -60,7 +60,7 @@ def get_employees(filters, worked_on):
 def get_activity(filters, employee, worked_on):
 	activity_list = []
 	
-	additional_conditions = build_conditions(filters, worked_on, employee)
+	additional_conditions = build_conditions(filters, worked_on, employee, filters.activity)
 	
 	from_date = filters.from_date
 	to_date = filters.to_date
@@ -73,7 +73,7 @@ def get_activity(filters, employee, worked_on):
 				{additional_conditions}
 				group by activity_type
 				order by activity_type""".format(additional_conditions=additional_conditions), 
-				{"start": from_date, "end": to_date, "employee": employee, "worked_on": worked_on}, as_dict=1):
+				{"start": from_date, "end": to_date, "employee": employee, "activity": filters.activity, "worked_on": worked_on}, as_dict=1):
 		activities = frappe._dict({
 			"activity_type": d.row_labels,
 			"hours": d.hours
@@ -85,7 +85,7 @@ def get_activity(filters, employee, worked_on):
 def get_date_list(filters, employee, activity, worked_on):
 	date_list = []
 	
-	additional_conditions = build_conditions(filters, worked_on, employee)
+	additional_conditions = build_conditions(filters, worked_on, employee, activity)
 	
 	from_date = filters.from_date
 	to_date = filters.to_date
@@ -111,7 +111,7 @@ def get_date_list(filters, employee, activity, worked_on):
 def get_tlname_list(filters, employee, activity, worked_on, date_worked):
 	name_list = []
 	
-	additional_conditions = build_conditions(filters, worked_on, employee)
+	additional_conditions = build_conditions(filters, worked_on, employee, activity)
 
 	from_date = filters.from_date
 	to_date = filters.to_date
@@ -138,7 +138,7 @@ def get_project_list(filters):
 	"""Get a list of dict {"project": project, "hours": hours}"""
 	projects_list = []
 	
-	additional_conditions = build_conditions(filters, worked_on='',employee='')
+	additional_conditions = build_conditions(filters, worked_on='',employee='',activity_type='')
 	
 	from_date = filters.from_date
 	to_date = filters.to_date
@@ -170,7 +170,7 @@ def get_project_list(filters):
 					group by if(if(support_ticket='' or support_ticket is NULL,project,support_ticket) is NULL or
 					if(support_ticket='' or support_ticket is NULL,project,support_ticket)='', 'No Project/Issue Associated',
 					if(support_ticket='' or support_ticket is NULL,project,support_ticket)) """.format(additional_conditions=additional_conditions), 
-				{"start":from_date,"end":to_date, "employee": filters.employee, "worked_on": filters.worked_on}, as_dict=1):
+				{"start":from_date,"end":to_date, "employee": filters.employee, "activity": filters.activity, "worked_on": filters.worked_on}, as_dict=1):
 		
 		if frappe.db.exists("Issue", d.worked_on):
 			subject = frappe.db.get_value("Issue",d.worked_on,"subject")
@@ -332,11 +332,14 @@ def get_entries_project(filters,project_list):
 
 	return out
 
-def build_conditions(filters, worked_on, employee):
+def build_conditions(filters, worked_on, employee, activity_type):
 
 	conditions = "and date_worked between %(start)s and %(end)s"
 	if filters.get("employee") or employee:
 		conditions += " and employee = %(employee)s"
+	
+	if filters.get("activity") or activity_type:
+		conditions += " and activity_type = %(activity)s"
 
 	if filters.get("worked_on") or worked_on:
 		
