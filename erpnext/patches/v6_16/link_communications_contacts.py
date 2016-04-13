@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 import frappe
 def execute():
 	frappe.reload_doctype("Communication")
+	frappe.db.sql("update `tabContact` set email_id = lower(email_id)")
+	frappe.db.sql("update `tabCommunication` set sender = lower(sender),recipients = lower(recipients)")
 	origin_contact = frappe.db.sql("select email_id,supplier,customer,user from `tabContact`",as_dict=1)
 	origin_communication = frappe.db.sql("select name, sender,recipients from `tabCommunication`",as_dict=1)
 
