@@ -22,6 +22,12 @@ erpnext.project_statements = {
 	},
 	"open_time_log": function(data) {
 		if (!data.row_labels) return;
+		if (data.indent == 1){
+		    if (data.type == 'Project')
+		        frappe.set_route("Form", "Project", data.row_labels);
+		    else if (data.type == 'Issue')
+		        frappe.set_route("Form", "Issue", data.row_labels);
+		}
 		if (data.indent == 5)
 		    frappe.set_route("Form", "Time Log", data.showing_labels);
 	}
