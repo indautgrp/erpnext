@@ -33,6 +33,29 @@ frappe.query_reports["Project Analytics"] = {
 			}
 		},
 		{
+			"fieldname": "week_range",
+			"label": __("Week Range"),
+			"fieldtype": "Link",
+			"options": "Week Range",
+			"get_query": function() {
+				return {
+					query: "erpnext.controllers.queries.get_week_range"
+				}
+			},
+			"on_change": function(query_report) {
+				var week_range = query_report.get_values().week_range;
+				if (!week_range) {
+					return;
+				}
+				frappe.model.with_doc("Week Range", week_range, function(r) {
+					var wr = frappe.model.get_doc("Week Range", week_range);
+					query_report.filters_by_name.from_date.set_input(wr.start_date);
+					query_report.filters_by_name.to_date.set_input(wr.end_date);
+					query_report.trigger_refresh();
+				});
+			}
+		},
+		{
 			"fieldtype": "Break",
 		},
 		{
@@ -58,26 +81,14 @@ frappe.query_reports["Project Analytics"] = {
 			}
 		},
 		{
-			"fieldname": "week_range",
-			"label": __("Week Range"),
 			"fieldtype": "Link",
-			"options": "Week Range",
+			"fieldname": "activity",
+			"options": "Activity Type",
+			"label": __("Activity Type"),
 			"get_query": function() {
 				return {
-					query: "erpnext.controllers.queries.get_week_range"
+					query: "erpnext.controllers.queries.get_activity_type"
 				}
-			},
-			"on_change": function(query_report) {
-				var week_range = query_report.get_values().week_range;
-				if (!week_range) {
-					return;
-				}
-				frappe.model.with_doc("Week Range", week_range, function(r) {
-					var wr = frappe.model.get_doc("Week Range", week_range);
-					query_report.filters_by_name.from_date.set_input(wr.start_date);
-					query_report.filters_by_name.to_date.set_input(wr.end_date);
-					query_report.trigger_refresh();
-				});
 			}
 		}
 	],
