@@ -61,6 +61,7 @@ class Contact(StatusUpdater):
 			self.name)
 
 	def update_communication_ref(self):
+		self.email_id = self.email_id.lower()
 		origin_communication = frappe.db.sql("select name, sender,recipients from `tabCommunication`",as_dict=1)
 
 		if self.email_id:
