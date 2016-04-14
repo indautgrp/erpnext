@@ -313,7 +313,14 @@ def get_worked_on(doctype, txt, searchfield, start, page_len, filters):
 def get_week_range(doctype, txt, searchfield, start, page_len, filters):
 
     	return frappe.db.sql("""select name from `tabWeek Range` order by idx""")
-    	
+
+def get_activity_type(doctype, txt, searchfield, start, page_len, filters):
+	
+	return frappe.db.sql("""select name,description from `tabActivity Type`
+		where name like %(txt)s or description like %(txt)s
+		order by name asc
+		limit %(start)s, %(page_len)s""", {"start":start, "page_len":page_len, "txt": "%{0}%".format(txt)})
+		
 @frappe.whitelist()
 def get_income_account(doctype, txt, searchfield, start, page_len, filters):
 	from erpnext.controllers.queries import get_match_cond
