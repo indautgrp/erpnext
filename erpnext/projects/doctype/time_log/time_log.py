@@ -4,7 +4,8 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from frappe.utils import flt, get_datetime, get_time, getdate
+from datetime import datetime,timedelta
+from frappe.utils import cstr, flt, get_datetime, get_time, getdate, cint ,get_defaults
 from dateutil.relativedelta import relativedelta
 from erpnext.manufacturing.doctype.manufacturing_settings.manufacturing_settings import get_mins_between_operations
 
@@ -19,7 +20,8 @@ class TimeLog(Document):
 	def validate(self):
 		self.set_status()
 		self.set_title()
-		self.validate_overlap()
+		if not(cint(get_defaults("fs_simplified_time_log"))):
+			self.validate_overlap()
 		self.validate_timings()
 		self.calculate_total_hours()
 		self.validate_time_log_for()
@@ -58,16 +60,20 @@ class TimeLog(Document):
 
 	def set_title(self):
 		"""Set default title for the Time Log"""
-		if self.title:
-			return
-
-		from frappe.utils import get_fullname
+		
 		if self.production_order:
 			self.title = _("{0} for {1}").format(self.operation, self.production_order)
-		elif self.activity_type and (self.task or self.project):
-			self.title = _("{0} for {1}").format(self.activity_type, self.task or self.project)
-		else:
-			self.title = self.task or self.project or get_fullname(frappe.session.user)
+		elif self.activity_type :
+ 			self.title = _("{0}").format(self.activity_type)
+ 		
+ 		if self.quotation_:
+ 			self.title += " for " + self.quotation_
+ 		if self.task:
+ 			self.title += " for " + self.task
+ 		if self.project:
+ 			self.title += " for " + self.project
+ 		if self.support_ticket:
+ 			self.title += " for " + self.support_ticket
 
 	def validate_overlap(self):
 		"""Checks if 'Time Log' entries overlap for a user, workstation. """
@@ -260,13 +266,38 @@ def get_events(start, end, filters=None):
 	from frappe.desk.calendar import get_event_conditions
 	conditions = get_event_conditions("Time Log", filters)
 
+	if (cint(get_defaults("fs_simplified_time_log"))):
+		date_cond = "date_worked between %(start)s and %(end)s"
+	else:
+		date_cond = "( from_time between %(start)s and %(end)s or to_time between %(start)s and %(end)s )"
+	
 	data = frappe.db.sql("""select name, from_time, to_time,
-		activity_type, task, project, production_order, workstation from `tabTime Log`
-		where docstatus < 2 and ( from_time between %(start)s and %(end)s or to_time between %(start)s and %(end)s )
-		{conditions}""".format(conditions=conditions), {
+		activity_type, task, project, production_order, workstation, date_worked, employee, hours from `tabTime Log`
+		where docstatus < 2 and {date_cond}
+		{conditions}""".format(conditions=conditions,date_cond=date_cond), {
 			"start": start,
 			"end": end
 			}, as_dict=True, update={"allDay": 0})
+	#aligns the assorted time logs so they are layed out sequentially
+	if(cint(get_defaults("fs_simplified_time_log"))):
+		slist = {}
+		for idx,da in enumerate(data):
+			if (da.employee not in slist):
+				slist[da.employee]={}
+			if (da.date_worked not in slist[da.employee]):
+				slist[da.employee][da.date_worked]=[]
+			slist[da.employee][da.date_worked].append([idx,da.from_time,da.to_time,da.hours])	
+		for e in slist:
+			for d in slist[e]:
+				temp = slist[e][d][0]
+				temp[1]= datetime.combine(d,get_time("8:00:00"))
+				temp[2]= temp[1] + timedelta(hours=temp[3])
+				for idx,l in enumerate(slist[e][d][1:]):
+					data[l[0]]["from_time"]= l[1] = slist[e][d][idx][2]
+					data[l[0]]["to_time"] = l[2] = l[1]+ timedelta(hours=l[3])
+				l= slist[e][d][0]
+				data[temp[0]]["from_time"]= slist[e][d][0][1]
+				data[temp[0]]["to_time"] =  slist[e][d][0][2]
 
 	for d in data:
 		d.title = d.name + ": " + (d.activity_type or d.production_order or "")
