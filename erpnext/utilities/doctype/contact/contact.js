@@ -21,6 +21,15 @@ frappe.ui.form.on("Contact", {
 		}
 	},
 	validate: function(frm) {
+		if (frappe.route_titles["create user account"]==1){
+			if(!frm.doc.customer || ! frm.doc.supplier){
+				cur_frm.set_df_property("supplier","reqd",1);
+				cur_frm.set_df_property("customer","reqd",1);
+			} else {
+				cur_frm.set_df_property("supplier","reqd",0);
+				cur_frm.set_df_property("customer","reqd",0);
+			}
+		}
 		// clear linked customer / supplier / sales partner on saving...
 		$.each(["Customer", "Supplier", "Sales Partner"], function(i, doctype) {
 			var name = frm.doc[doctype.toLowerCase().replace(/ /g, "_")];

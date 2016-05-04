@@ -24,6 +24,7 @@ class Contact(StatusUpdater):
 		self.set_status()
 		self.validate_primary_contact()
 		self.set_user()
+		self.update_communication_ref()
 
 	def set_user(self):
 		if not self.user and self.email_id:
@@ -58,6 +59,48 @@ class Contact(StatusUpdater):
 	def on_trash(self):
 		frappe.db.sql("""update `tabIssue` set contact='' where contact=%s""",
 			self.name)
+
+	def update_communication_ref(self):
+		origin_communication = frappe.db.sql("select name, sender,recipients from `tabCommunication`",as_dict=1)
+
+		if self.email_id:
+			self.email_id = self.email_id.lower()
+			comm = {"email_id":self.email_id,
+						"supplier":self.supplier,
+						"customer":self.customer
+						}
+			for communication in origin_communication:
+				sender = communication["sender"]
+				recipients = communication["recipients"]
+				if comm["email_id"]:
+					if (sender and sender.find(comm["email_id"]) > -1) or (recipients and recipients.find(comm["email_id"]) > -1):
+						if comm["supplier"] and comm["customer"]:
+							frappe.db.sql("""update `tabCommunication`
+									set supplier = %(supplier)s,
+									customer = %(customer)s
+									where name = %(name)s""", {
+								"supplier": comm["supplier"],
+								"customer": comm["customer"],
+								"name": communication["name"]
+							})
+
+						elif comm["supplier"]:
+							# return {"supplier": comm["supplier"], "customer": None}
+							frappe.db.sql("""update `tabCommunication`
+									set supplier = %(supplier)s
+									where name = %(name)s""", {
+								"supplier": comm["supplier"],
+								"name": communication["name"]
+							})
+
+						elif comm["customer"]:
+							# return {"supplier": None, "customer": comm["customer"]}
+							frappe.db.sql("""update `tabCommunication`
+									set customer = %(customer)s
+									where name = %(name)s""", {
+								"customer": comm["customer"],
+								"name": communication["name"]
+							})
 
 @frappe.whitelist()
 def invite_user(contact):
