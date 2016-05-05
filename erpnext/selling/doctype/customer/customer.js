@@ -77,6 +77,7 @@ cur_frm.cscript.setup_dashboard = function(doc) {
 	cur_frm.dashboard.add_doctype_badge("Delivery Note", "customer");
 	cur_frm.dashboard.add_doctype_badge("Sales Invoice", "customer");
 	cur_frm.dashboard.add_doctype_badge("Project", "customer");
+	cur_frm.dashboard.add_doctype_badge("Issue", "customer");
 
 	return frappe.call({
 		type: "GET",
