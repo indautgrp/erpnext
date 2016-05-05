@@ -132,7 +132,7 @@ def get_dashboard_info(customer):
 
 	out = {}
 	for doctype in ["Opportunity", "Quotation", "Sales Order", "Delivery Note",
-		"Sales Invoice", "Project"]:
+		"Sales Invoice", "Project", "Issue"]:
 		out[doctype] = frappe.db.get_value(doctype,
 			{"customer": customer, "docstatus": ["!=", 2] }, "count(*)")
 
