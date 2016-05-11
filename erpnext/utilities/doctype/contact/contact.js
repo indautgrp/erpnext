@@ -9,7 +9,8 @@ frappe.ui.form.on("Contact", {
 		if(frappe.route_titles["update_contact"])
 		{
 			frappe.confirm("change email address from "+cur_frm.doc.email_id+ " to "+frappe.route_titles["update_contact"]["email_id"]
-				,function(){cur_frm.doc.email_id = frappe.route_titles["update_contact"]["email_id"];cur_frm.refresh();cur_frm.dirty()},function(){})
+				,function(){cur_frm.doc.email_id = frappe.route_titles["update_contact"]["email_id"];cur_frm.refresh();cur_frm.dirty();delete frappe.route_titles["update_contact"];},function(){delete frappe.route_titles["update_contact"];})
+
 		}
 	},
 	refresh: function(frm) {
