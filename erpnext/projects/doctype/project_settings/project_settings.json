@@ -44,7 +44,7 @@
  "issingle": 1, 
  "istable": 0, 
  "max_attachments": 0, 
- "modified": "2016-05-02 14:28:55.649713", 
+ "modified": "2016-05-16 14:54:58.941532", 
  "modified_by": "Administrator", 
  "module": "Projects", 
  "name": "Project Settings", 
@@ -75,7 +75,7 @@
    "amend": 0, 
    "apply_user_permissions": 0, 
    "cancel": 0, 
-   "create": 0, 
+   "create": 1, 
    "delete": 0, 
    "email": 0, 
    "export": 0, 
@@ -85,11 +85,11 @@
    "print": 0, 
    "read": 1, 
    "report": 0, 
-   "role": "Projects User", 
+   "role": "Administrator", 
    "set_user_permissions": 0, 
    "share": 0, 
    "submit": 0, 
-   "write": 0
+   "write": 1
   }
  ], 
  "read_only": 0, 
