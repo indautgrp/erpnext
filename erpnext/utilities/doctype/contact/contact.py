@@ -66,8 +66,11 @@ class Contact(StatusUpdater):
 		if self.email_id:
 			self.email_id = self.email_id.lower()
 			comm = {"email_id":self.email_id,
+			        "name":self.name,
 						"supplier":self.supplier,
-						"customer":self.customer
+                        "supplier_name":self.supplier_name,
+						"customer":self.customer,
+			            "customer_name":self.customer_name
 						}
 			for communication in origin_communication:
 				sender = communication["sender"]
@@ -76,29 +79,37 @@ class Contact(StatusUpdater):
 					if (sender and sender.find(comm["email_id"]) > -1) or (recipients and recipients.find(comm["email_id"]) > -1):
 						if comm["supplier"] and comm["customer"]:
 							frappe.db.sql("""update `tabCommunication`
-									set supplier = %(supplier)s,
-									customer = %(customer)s
+									set timeline_doctype = %(timeline_doctype)s,
+									timeline_name = %(timeline_name)s
 									where name = %(name)s""", {
-								"supplier": comm["supplier"],
-								"customer": comm["customer"],
+								"timeline_doctype": "contact",
+								"timeline_name":comm["name"],
 								"name": communication["name"]
 							})
 
 						elif comm["supplier"]:
 							# return {"supplier": comm["supplier"], "customer": None}
 							frappe.db.sql("""update `tabCommunication`
-									set supplier = %(supplier)s
+									set timeline_doctype = %(timeline_doctype)s,
+									timeline_name = %(timeline_name)s,
+									timeline_label = %(timeline_label)s
 									where name = %(name)s""", {
-								"supplier": comm["supplier"],
+								"timeline_doctype": "supplier",
+								"timeline_name":comm["supplier"],
+								"timeline_label":comm["supplier_name"],
 								"name": communication["name"]
 							})
 
 						elif comm["customer"]:
 							# return {"supplier": None, "customer": comm["customer"]}
 							frappe.db.sql("""update `tabCommunication`
-									set customer = %(customer)s
+									set timeline_doctype = %(timeline_doctype)s,
+									timeline_name = %(timeline_name)s,
+									timeline_label = %(timeline_label)s
 									where name = %(name)s""", {
-								"customer": comm["customer"],
+								"timeline_doctype": "customer",
+								"timeline_name":comm["customer"],
+								"timeline_label":comm["customer_name"],
 								"name": communication["name"]
 							})
 
