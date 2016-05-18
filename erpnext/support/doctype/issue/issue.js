@@ -17,15 +17,12 @@ function dialog(frm){
                             "label": __("Resolution Details"),
                             "reqd": 1,
 			    "name":"resolution_details"
-                        },
-                        {
-                            "fieldtype": "Button",
-                            "label": __("Submit")
                         }
                     ]
                 });
+                d.no_cancel();
                 d.set_value("resolution_details",cur_frm.doc.resolution_details)
-                d.get_input("submit").on("click", function () {
+                d.set_primary_action(__("Close"), function() {
                     if (d.get_value("resolution_details")===""){
                         show_alert("Resolution Details are Required",5)
                         return
