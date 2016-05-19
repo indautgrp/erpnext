@@ -25,16 +25,34 @@ frappe.ui.form.on("Time Log", "refresh", function(frm) {
 
 
 // set to time if hours is updated
-frappe.ui.form.on("Time Log", "hours", function(frm) {
-	if(!frm.doc.from_time) {
-		frm.set_value("from_time", frappe.datetime.now_datetime());
+frappe.ui.form.on("Time Log", "hours",function(frm) {
+	update_time(frm);
+});
+
+frappe.ui.form.on("Time Log","date_worked",function(frm) {
+	update_time(frm);
+});
+
+var update_time = function(frm) {
+	if(cint(sys_defaults.fs_simplified_time_log)){
+		if(frm.doc.date_worked){
+			if(!frm.doc.from_time) {
+				frm.set_value("from_time",moment(frm.doc.date_worked+" "+(moment().format('hh:mm:ss'))).format('YYYY-MM-DD hh:mm:ss'));
+			}
+		} else {
+			return;
+		}
+	}else{
+		if(!frm.doc.from_time) {
+			frm.set_value("from_time", frappe.datetime.now_datetime());
+		}
 	}
 	var d = moment(frm.doc.from_time);
 	d.add(frm.doc.hours, "hours");
 	frm._setting_hours = true;
 	frm.set_value("to_time", d.format(moment.defaultDatetimeFormat));
 	frm._setting_hours = false;
-});
+}
 
 // clear production order if making time log
 frappe.ui.form.on("Time Log", "before_save", function(frm) {
