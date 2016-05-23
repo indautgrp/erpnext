@@ -20,9 +20,9 @@ function dialog(frm){
                         }
                     ]
                 });
-                d.no_cancel();
+                
                 d.set_value("resolution_details",cur_frm.doc.resolution_details)
-                d.set_primary_action(__("Close"), function() {
+                d.set_primary_action(__("Update"), function() {
                     if (d.get_value("resolution_details")===""){
                         show_alert("Resolution Details are Required",5)
                         return
