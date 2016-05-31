@@ -29,14 +29,13 @@ frappe.ui.form.on("Contact", {
 		}
 	},
 	validate: function(frm) {
-		if (frappe.route_titles["create user account"]==1){
-			if(!frm.doc.customer || ! frm.doc.supplier){
-				cur_frm.set_df_property("supplier","reqd",1);
-				cur_frm.set_df_property("customer","reqd",1);
-			} else {
-				cur_frm.set_df_property("supplier","reqd",0);
-				cur_frm.set_df_property("customer","reqd",0);
-			}
+		if(frappe.route_titles["create user account"]==1&&!(frm.doc.customer || frm.doc.supplier)){
+			cur_frm.set_df_property("supplier","reqd",1);
+			cur_frm.set_df_property("customer","reqd",1);
+
+		} else {
+			cur_frm.set_df_property("supplier","reqd",0);
+			cur_frm.set_df_property("customer","reqd",0);
 		}
 		if (frappe.route_titles["update_contact"])
 		{
