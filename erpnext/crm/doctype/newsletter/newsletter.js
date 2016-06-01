@@ -27,7 +27,7 @@ cur_frm.cscript.refresh = function(doc) {
 
 	if(doc.__islocal && !doc.send_from) {
 		cur_frm.set_value("send_from",
-			repl("%(fullname)s <%(email)s>", frappe.user_info(doc.owner)));
+			repl("%(email)s", frappe.user_info(doc.owner)));
 	}
 }
 
