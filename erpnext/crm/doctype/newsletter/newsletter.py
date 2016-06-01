@@ -36,7 +36,7 @@ class Newsletter(Document):
 			self.validate_send()
 
 			# hack! event="bulk_long" to queue in longjob queue
-			erpnext.tasks.send_newsletter.delay(frappe.local.site, self.name, event="bulk_long")
+			erpnext.tasks.send_newsletter.delay(frappe.local.site, self.name, event="")
 		else:
 			self.send_bulk()
 
