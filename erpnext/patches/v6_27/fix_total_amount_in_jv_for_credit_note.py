@@ -1,6 +1,5 @@
 import frappe
 
-# patch all for-print field (total amount) in Journal Entry in 2015
 def execute():
 	updated_list = []
 
