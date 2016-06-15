@@ -78,10 +78,17 @@ class EmailDigest(Document):
 		self.set_title(context)
 		self.set_style(context)
 		self.set_accounting_cards(context)
-
-		context.events = self.get_calendar_events()
-		context.todo_list = self.get_todo_list()
-		context.notifications = self.get_notifications()
+		
+		if self.get("calendar_events"):
+			context.events = self.get_calendar_events()
+		if self.get("todo_list"):
+			context.todo_list = self.get_todo_list()
+		if self.get("notifications"):
+			context.notifications = self.get_notifications()
+		if self.get("support_ticket"):
+			context.issue_list = self.get_issue_list()
+		if self.get("project"):
+			context.project_list = self.get_project_list()
 
 		quote = get_random_quote()
 		context.quote = {"text": quote[0], "author": quote[1]}
@@ -160,14 +167,48 @@ class EmailDigest(Document):
 			t.link = get_url_to_form("ToDo", t.name)
 
 		return todo_list
+	
+	def get_issue_list(self, user_id=None):
+		"""Get issue list"""
+		if not user_id:
+			user_id = frappe.session.user
+
+		meta = frappe.get_meta("Issue")
+		role_permissions = frappe.permissions.get_role_permissions(meta, user_id)
+		if not role_permissions.get("read"):
+			return None
+
+		issue_list = frappe.db.sql("""select *
+			from `tabIssue` where status in ("Replied","Open")
+			order by modified asc limit 10""", as_dict=True)
+
+		for t in issue_list:
+			t.link = get_url_to_form("Issue", t.name)
+
+		return issue_list
+	
+	def get_project_list(self, user_id=None):
+		"""Get project list"""
+		if not user_id:
+			user_id = frappe.session.user
+
+		project_list = frappe.db.sql("""select *
+			from `tabProject` where status='Open' and project_type='External'
+			order by modified asc limit 10""", as_dict=True)
+
+		for t in project_list:
+			t.link = get_url_to_form("Issue", t.name)
+
+		return project_list
 
 	def set_accounting_cards(self, context):
 		"""Create accounting cards if checked"""
 
 		cache = frappe.cache()
 		context.cards = []
-		for key in ("income", "expenses_booked", "income_year_to_date", "expense_year_to_date",
-			"invoiced_amount", "payables", "bank_balance"):
+		for key in ("income", "expenses_booked", "income_year_to_date","expense_year_to_date",
+			 "sales_order","purchase_order","pending_sales_orders","pending_purchase_orders",
+			"invoiced_amount", "payables", "bank_balance", "credit_balance"):
 			if self.get(key):
 				cache_key = "email_digest:card:{0}:{1}".format(self.company, key)
 				card = cache.get(cache_key)
@@ -189,7 +230,7 @@ class EmailDigest(Document):
 							card.gain = True
 
 						card.last_value = self.fmt_money(card.last_value)
-
+					
 					card.value = self.fmt_money(card.value)
 
 					cache.setex(cache_key, card, 24 * 60 * 60)
@@ -227,8 +268,12 @@ class EmailDigest(Document):
 		}
 
 	def get_bank_balance(self):
-		# account is of type "Bank" or "Cash"
-		return self.get_type_balance('bank_balance', 'Bank')
+		# account is of type "Bank" and root_type is Asset
+		return self.get_type_balance('bank_balance', 'Bank', root_type='Asset')
+	
+	def get_credit_balance(self):
+		# account is of type "Bank" and root_type is Liability
+		return self.get_type_balance('credit_balance', 'Bank', root_type='Liability')
 
 	def get_payables(self):
 		return self.get_type_balance('payables', 'Payable')
@@ -257,15 +302,21 @@ class EmailDigest(Document):
 
 		return balance, past_balance
 
-	def get_type_balance(self, fieldname, account_type):
-		accounts = [d.name for d in \
-			frappe.db.get_all("Account", filters={"account_type": account_type,
+	def get_type_balance(self, fieldname, account_type, root_type=None):
+		
+		if root_type:
+			accounts = [d.name for d in \
+				frappe.db.get_all("Account", filters={"account_type": account_type,
+				"company": self.company, "is_group": 0, "root_type": root_type})]
+		else:
+			accounts = [d.name for d in \
+				frappe.db.get_all("Account", filters={"account_type": account_type,
 				"company": self.company, "is_group": 0})]
 
 		balance = prev_balance = 0.0
 		for account in accounts:
-			balance += get_balance_on(account, date=self.future_from_date)
-			prev_balance += get_balance_on(account, date=self.past_from_date)
+			balance += get_balance_on(account, date=self.future_to_date)
+			prev_balance += get_balance_on(account, date=self.past_to_date)
 
 		return {
 			'label': self.meta.get_label(fieldname),
@@ -279,6 +330,70 @@ class EmailDigest(Document):
 				frappe.db.get_all("Account", filters={"root_type": root_type.title(),
 					"company": self.company, "is_group": 0})]
 		return self._accounts[root_type]
+	
+	def get_support_ticket(self):
+		"""Get count of support ticket"""
+		count = frappe.db.sql("""select count(*) from `tabIssue`
+			where (date(`creation`) between %(from_date)s and %(to_date)s)
+			and status in ('Open','Replied') """,
+			{"from_date": self.future_from_date, "to_date": self.future_to_date})[0][0]
+		
+		return {
+			"label": self.meta.get_label("issue"),
+			"value": count
+		}
+
+	def get_purchase_order(self):
+		
+		return self.get_summary_of_doc("Purchase Order","purchase_order")
+
+	def get_sales_order(self):
+
+		return self.get_summary_of_doc("Sales Order","sales_order")
+    
+	def get_pending_purchase_orders(self):
+
+		return self.get_summary_of_pending("Purchase Order","pending_purchase_orders")
+
+	def get_pending_sales_orders(self):
+
+		return self.get_summary_of_pending("Sales Order","pending_sales_orders")
+	
+	def get_summary_of_pending(self, doc_type, fieldname):
+
+		value = frappe.db.sql("""select ifnull(sum(total),0) from `tab{0}`
+			where (transaction_date <= %(to_date)s)
+			and status not in ('closed','cancelled', 'completed') """.format(doc_type),
+			{"to_date": self.future_to_date})[0][0]
+		
+		return {
+			"label": self.meta.get_label(fieldname),
+            		"value": value
+		}
+
+	def get_summary_of_doc(self, doc_type, fieldname):
+
+		count = frappe.db.sql("""select count(*) from `tab{0}`
+			where (transaction_date <= %(to_date)s)
+			and status not in ('closed','cancelled', 'completed') """.format(doc_type), 
+			{"to_date": self.future_to_date})[0][0]
+		
+		value = self.get_total_on(doc_type,date = self.future_to_date) - self.get_total_on(doc_type,date = self.future_from_date)
+		
+		last_value = self.get_total_on(doc_type,date = self.past_to_date) - self.get_total_on(doc_type,date = self.past_from_date)
+
+		return {
+			"label": self.meta.get_label(fieldname),
+			"count": count,
+            		"value": value,
+            		"last_value": last_value
+		}
+	
+	def get_total_on(self, doc_type, date):
+		
+		return frappe.db.sql("""select ifnull(sum(total),0) from `tab{0}`
+			where (transaction_date <= %(date)s)""".format(doc_type),
+			{"date": date})[0][0]
 
 	def get_from_to_date(self):
 		today = now_datetime().date()
