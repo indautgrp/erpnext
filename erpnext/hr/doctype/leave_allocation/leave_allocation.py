@@ -87,7 +87,7 @@ class LeaveAllocation(Document):
 			self.from_date, self.to_date)
 		
 		if flt(leaves_taken) > flt(self.total_leaves_allocated):
-			if frappe.db.get_value("Leave Type", self.leave_type, "allow_negative")
+			if frappe.db.get_value("Leave Type", self.leave_type, "allow_negative"):
 				frappe.msgprint(_("Note: Total allocated leaves {0} shouldn't be less than already approved leaves {1} for the period").format(self.total_leaves_allocated, leaves_taken), LessAllocationError)
 			else:
 				frappe.throw(_("Total allocated leaves {0} cannot be less than already approved leaves {1} for the period").format(self.total_leaves_allocated, leaves_taken), LessAllocationError)
