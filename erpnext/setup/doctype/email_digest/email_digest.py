@@ -231,12 +231,13 @@ class EmailDigest(Document):
 		cache = frappe.cache()
 		context.cards = []
 		for key in ("income", "expenses_booked", "income_year_to_date","expense_year_to_date",
-			 "sales_order","purchase_order","pending_sales_orders","pending_purchase_orders",
+			 "new_quotations","pending_quotations","sales_order","purchase_order","pending_sales_orders","pending_purchase_orders",
 			"invoiced_amount", "payables", "bank_balance", "credit_balance"):
 			if self.get(key):
 				cache_key = "email_digest:card:{0}:{1}".format(self.company, key)
-				card = cache.get(cache_key)
-				
+				#card = cache.get(cache_key)
+				card = ''
+
 				if card:
 					card = eval(card)
 
@@ -365,13 +366,18 @@ class EmailDigest(Document):
 			count += get_count_on(account, fieldname, date=self.future_to_date)
 			prev_balance += get_balance_on(account, date=self.past_to_date)
 		
-
-		return {
-			'label': self.meta.get_label(fieldname),
-			'value': balance,
-			'last_value': prev_balance,
-			'count': count
-		}
+		if fieldname in ("bank_balance","credit_balance"):
+			return {
+				'label': self.meta.get_label(fieldname),
+				'value': balance,
+				'last_value': prev_balance			}
+		else:
+			return {
+				'label': self.meta.get_label(fieldname),
+				'value': balance,
+				'last_value': prev_balance,
+				'count': count
+			}
 	
 
 	def get_root_type_accounts(self, root_type):
@@ -396,13 +402,21 @@ class EmailDigest(Document):
 	def get_pending_sales_orders(self):
 
 		return self.get_summary_of_pending("Sales Order","pending_sales_orders","per_delivered")
+
+	def get_new_quotations(self):
+
+		return self.get_summary_of_doc("Quotation","new_quotations")
+
+	def get_pending_quotations(self):
+
+		return self.get_summary_of_pending_quotations("pending_quotations")
 	
 	def get_summary_of_pending(self, doc_type, fieldname, getfield):
 
-		value, count, billed_value, delivered_value = frappe.db.sql("""select ifnull(sum(total),0), count(*), 
-			ifnull(sum(total*per_billed/100),0), ifnull(sum(total*{0}/100),0)  from `tab{1}`
+		value, count, billed_value, delivered_value = frappe.db.sql("""select ifnull(sum(grand_total),0), count(*), 
+			ifnull(sum(grand_total*per_billed/100),0), ifnull(sum(grand_total*{0}/100),0)  from `tab{1}`
 			where (transaction_date <= %(to_date)s)
-			and status not in ('Closed','Cancelled', 'Completed', 'Draft') """.format(getfield, doc_type),
+			and status not in ('Closed','Cancelled', 'Completed') """.format(getfield, doc_type),
 			{"to_date": self.future_to_date})[0]
 		
 		return {
@@ -412,13 +426,30 @@ class EmailDigest(Document):
 			"delivered_value": delivered_value,
             		"count": count
 		}
+	
+	def get_summary_of_pending_quotations(self, fieldname):
+
+		value, count = frappe.db.sql("""select ifnull(sum(grand_total),0), count(*) from `tabQuotation`
+			where (transaction_date <= %(to_date)s)
+			and status not in ('Ordered','Cancelled', 'Lost') """,{"to_date": self.future_to_date})[0]
+
+		last_value = frappe.db.sql("""select ifnull(sum(grand_total),0) from `tabQuotation`
+			where (transaction_date <= %(to_date)s)
+			and status not in ('Ordered','Cancelled', 'Lost') """,{"to_date": self.past_to_date})[0][0]
+		
+		return {
+			"label": self.meta.get_label(fieldname),
+            		"value": value,
+			"last_value": last_value,
+            		"count": count
+		}
 
 	def get_summary_of_doc(self, doc_type, fieldname):
 		
-		value = self.get_total_on(doc_type,date = self.future_to_date)[0] - self.get_total_on(doc_type,date = self.future_from_date)[0]
-		count = self.get_total_on(doc_type,date = self.future_to_date)[1] - self.get_total_on(doc_type,date = self.future_from_date)[1]
+		value = self.get_total_on(doc_type, self.future_from_date, self.future_to_date)[0]
+		count = self.get_total_on(doc_type, self.future_from_date, self.future_to_date)[1] 
 
-		last_value =self.get_total_on(doc_type,date = self.past_to_date)[0] - self.get_total_on(doc_type,date = self.past_from_date)[0]
+		last_value =self.get_total_on(doc_type, self.past_from_date, self.past_to_date)[0]
 
 		return {
 			"label": self.meta.get_label(fieldname),
@@ -427,11 +458,11 @@ class EmailDigest(Document):
 			"count": count
 		}
 	
-	def get_total_on(self, doc_type, date):
+	def get_total_on(self, doc_type, from_date, to_date):
 		
-		return frappe.db.sql("""select ifnull(sum(total),0), count(*) from `tab{0}`
-			where (transaction_date <= %(date)s) and status not in ('Cancelled', 'Draft')""".format(doc_type),
-			{"date": date})[0]
+		return frappe.db.sql("""select ifnull(sum(grand_total),0), count(*) from `tab{0}`
+			where (transaction_date between %(from_date)s and %(to_date)s) and status not in ('Cancelled')""".format(doc_type),
+			{"from_date": from_date, "to_date": to_date})[0]
 
 	def get_from_to_date(self):
 		today = now_datetime().date()
