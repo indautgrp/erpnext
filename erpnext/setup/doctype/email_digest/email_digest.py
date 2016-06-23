@@ -235,9 +235,8 @@ class EmailDigest(Document):
 			"invoiced_amount", "payables", "bank_balance", "credit_balance"):
 			if self.get(key):
 				cache_key = "email_digest:card:{0}:{1}".format(self.company, key)
-				#card = cache.get(cache_key)
-				card = ''
-
+				card = cache.get(cache_key)
+				
 				if card:
 					card = eval(card)
 
