@@ -262,4 +262,3 @@ erpnext.patches.v6_20x.update_product_bundle_description
 erpnext.patches.v6_27.create_index_on_time_log
 erpnext.patches.v6_27.fix_total_amount_in_jv_for_credit_note
 erpnext.patches.v6_27.update_customer_for_issue
-erpnext.patches.v6_27.create_recurring_for_failed
