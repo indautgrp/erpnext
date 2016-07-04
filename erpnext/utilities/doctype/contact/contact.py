@@ -80,10 +80,12 @@ class Contact(StatusUpdater):
 						if comm["supplier"] and comm["customer"]:
 							frappe.db.sql("""update `tabCommunication`
 									set timeline_doctype = %(timeline_doctype)s,
-									timeline_name = %(timeline_name)s
+									timeline_name = %(timeline_name)s,
+									timeline_label = %(timeline_label)s
 									where name = %(name)s""", {
-								"timeline_doctype": "contact",
+								"timeline_doctype": "Contact",
 								"timeline_name":comm["name"],
+								"timeline_label":self.name,
 								"name": communication["name"]
 							})
 
@@ -94,7 +96,7 @@ class Contact(StatusUpdater):
 									timeline_name = %(timeline_name)s,
 									timeline_label = %(timeline_label)s
 									where name = %(name)s""", {
-								"timeline_doctype": "supplier",
+								"timeline_doctype": "Supplier",
 								"timeline_name":comm["supplier"],
 								"timeline_label":comm["supplier_name"],
 								"name": communication["name"]
@@ -107,7 +109,7 @@ class Contact(StatusUpdater):
 									timeline_name = %(timeline_name)s,
 									timeline_label = %(timeline_label)s
 									where name = %(name)s""", {
-								"timeline_doctype": "customer",
+								"timeline_doctype": "Customer",
 								"timeline_name":comm["customer"],
 								"timeline_label":comm["customer_name"],
 								"name": communication["name"]
