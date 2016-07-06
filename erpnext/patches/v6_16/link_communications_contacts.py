@@ -23,10 +23,12 @@ def execute():
 					if comm["supplier"] and comm["customer"]:
 						frappe.db.sql("""update `tabCommunication`
 											set timeline_doctype = %(timeline_doctype)s,
-											timeline_name = %(timeline_name)s
+											timeline_name = %(timeline_name)s,
+											timeline_label = %(timeline_label)s
 											where name = %(name)s""", {
 							"timeline_doctype": "Contact",
 							"timeline_name": comm["name"],
+							"timeline_label": comm["name"],
 							"name": communication["name"]
 						})
 
