@@ -56,14 +56,8 @@ frappe.ui.form.on("Contact", {
 		if (frappe.route_titles["create_contact"])
 		{
 			delete frappe.route_titles["create_contact"]
-
-			var previous_hash = window.location.hash;
 			frappe.set_route("Email Inbox");
-
-			// hashchange didn't fire!
-			if (window.location.hash == previous_hash) {
-				frappe.route();
-			}
+			frappe.route();
 		}
 	}
 });
