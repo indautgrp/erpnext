@@ -34,6 +34,26 @@ class SalarySlip(TransactionBase):
 		self.total_in_words = money_in_words(self.rounded_total, company_currency)
 
 		set_employee_name(self)
+	
+	def get_users(self):
+		"""get list of users"""
+		if not self.employee:
+			msgprint(_("Please set employee first."))
+
+		user_list = frappe.db.sql("""
+			select company_email, personal_email, user_id from tabEmployee
+			where name = %s """, self.employee, as_dict=1)
+
+		if self.recipients_list:
+			recipients_list = self.recipients_list.split("\n")
+		else:
+			recipients_list = []
+		for p in user_list:
+			p["checked_company"] = p["company_email"] in recipients_list and 1 or 0
+			p["checked_personal"] = p["personal_email"] in recipients_list and 1 or 0
+			p["checked_user"] = p["user_id"] in recipients_list and 1 or 0
+
+		frappe.response['user_list'] = user_list
 
 	def get_emp_and_leave_details(self):
 		if self.employee:
@@ -56,7 +76,7 @@ class SalarySlip(TransactionBase):
 			and (from_date <= %s or from_date <= %s)
 			and (to_date is null or to_date >= %s or to_date >= %s)""",
 			(self.employee, m.month_start_date, joining_date, m.month_end_date, relieving_date))
-
+		
 		if not struct:
 			msgprint(_("No active Salary Structure found for employee {0} and the month")
 				.format(self.employee))
@@ -209,10 +229,14 @@ class SalarySlip(TransactionBase):
 
 
 	def send_mail_funct(self):
-		receiver = frappe.db.get_value("Employee", self.employee, "company_email")
-		if receiver:
+
+		recipients = self.recipients_list.split("\n")
+
+		if recipients and self.recipients_list !='':
 			subj = 'Salary Slip - ' + cstr(self.month) +'/'+cstr(self.fiscal_year)
-			frappe.sendmail([receiver], subject=subj, message = _("Please see attachment"),
-				attachments=[frappe.attach_print(self.doctype, self.name, file_name=self.name)])
+			for receiver in recipients:
+				frappe.sendmail([receiver], subject=subj, message = _("Please see attachment"),
+					attachments=[frappe.attach_print(self.doctype, self.name, file_name=self.name)])
 		else:
-			msgprint(_("Company Email ID not found, hence mail not sent"))
+			msgprint(_("Recipients not be set, hence mail not sent"))
+
