@@ -86,7 +86,7 @@ class EmailDigest(Document):
 			context.todo_count = self.get_todo_count()
 		if self.get("notifications"):
 			context.notifications = self.get_notifications()
-		if self.get("support_ticket"):
+		if self.get("issue"):
 			context.issue_list = self.get_issue_list()
 			context.issue_count = self.get_issue_count()
 		if self.get("project"):
@@ -186,7 +186,7 @@ class EmailDigest(Document):
 		"""Get issue list"""
 		if not user_id:
 			user_id = frappe.session.user
-
+		
 		meta = frappe.get_meta("Issue")
 		role_permissions = frappe.permissions.get_role_permissions(meta, user_id)
 		if not role_permissions.get("read"):
