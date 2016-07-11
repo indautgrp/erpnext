@@ -139,3 +139,67 @@ cur_frm.fields_dict.employee.get_query = function(doc,cdt,cdn) {
 		query: "erpnext.controllers.queries.employee_query"
 	}		
 }
+
+cur_frm.cscript.addremove_recipients = function(doc, dt, dn) {
+	// Get user list
+	return $c_obj(doc, 'get_users', '', function(r, rt) {
+		if(r.exc) {
+			msgprint(r.exc);
+		} else {
+			// Open a dialog and display checkboxes against email addresses
+			doc = locals[dt][dn];
+			var d = new frappe.ui.Dialog({
+				title: __('Add/Remove Recipients'),
+				width: 400
+			});
+
+			$.each(r.user_list, function(i, v) {
+
+                var company_email = 'Company e-mail: ';
+				company_email = company_email + " &lt;" + v.company_email + "&gt;";
+
+                var personal_email = 'Personal e-mail: ';
+				personal_email = personal_email + " &lt;" + v.personal_email + "&gt;";
+
+				var user_id = 'User: ';
+				user_id = user_id + " &lt;" + v.user_id + "&gt;";
+
+				$('<div class="checkbox"><label>\
+					<input type="checkbox" data-id="' + v.company_email + '"'+
+						(v.checked_company ? 'checked' : '') +
+				'> '+ company_email +'</label></div>').appendTo(d.body);
+
+				$('<div class="checkbox"><label>\
+					<input type="checkbox" data-id="' + v.personal_email + '"'+
+						(v.checked_personal ? 'checked' : '') +
+				'> '+ personal_email +'</label></div>').appendTo(d.body);
+
+				$('<div class="checkbox"><label>\
+					<input type="checkbox" data-id="' + v.user_id + '"'+
+						(v.checked_user ? 'checked' : '') +
+				'> '+ user_id +'</label></div>').appendTo(d.body);
+			});
+
+			// Display add recipients button
+			d.set_primary_action("Update", function() {
+				cur_frm.cscript.add_to_rec_list(doc, d.body, r.user_list.length);
+			});
+
+			cur_frm.rec_dialog = d;
+			d.show();
+		}
+	});
+}
+
+cur_frm.cscript.add_to_rec_list = function(doc, dialog, length) {
+	// add checked email to list of recipients
+	var rec_list = [];
+	$(dialog).find('input:checked').each(function(i, input) {
+		rec_list.push($(input).attr('data-id'));
+	});
+
+	doc.recipients_list = rec_list.join('\n');
+	cur_frm.rec_dialog.hide();
+	cur_frm.save();
+	cur_frm.refresh_fields();
+}
