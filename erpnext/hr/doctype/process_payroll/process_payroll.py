@@ -65,6 +65,19 @@ class ProcessPayroll(Document):
 			if not frappe.db.sql("""select name from `tabSalary Slip`
 					where docstatus!= 2 and employee = %s and month = %s and fiscal_year = %s and company = %s
 					""", (emp[0], self.month, self.fiscal_year, self.company)):
+				
+				email = frappe.db.sql("""
+					select company_email, personal_email, user_id from tabEmployee
+					where name = %s """, emp[0])
+
+				recipients_list=[]
+				if self.company_email and email[0][0]:
+					recipients_list.append(email[0][0])
+				if self.personal_email and email[0][1]:
+					recipients_list.append(email[0][1])
+				if self.user_id and email[0][2]:
+					recipients_list.append(email[0][2])
+				
 				ss = frappe.get_doc({
 					"doctype": "Salary Slip",
 					"fiscal_year": self.fiscal_year,
@@ -72,6 +85,8 @@ class ProcessPayroll(Document):
 					"month": self.month,
 					"email_check": self.send_email,
 					"company": self.company,
+					"payroll_date": self.payroll_date,
+					"recipients_list": "\n".join(recipients_list)
 				})
 				ss.insert()
 				ss_list.append(ss.name)
