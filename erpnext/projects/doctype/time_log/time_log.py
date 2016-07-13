@@ -249,7 +249,7 @@ class TimeLog(Document):
 		if self.task:
 			task = frappe.get_doc("Task", self.task)
 			task.update_time_and_costing()
-			task.save()
+			task.save(ignore_permissions=True)
 
 		elif self.project:
 			frappe.get_doc("Project", self.project).update_project()

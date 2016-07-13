@@ -49,6 +49,11 @@ def get_data():
 					"name": "Activity Cost",
 					"description": _("Cost of various activities"),
 				},
+				{
+					"type": "doctype",
+					"name": "Time Log Approval",
+					"description": _("Approve Time Log"),
+				},
 			]
 		},
 		{
