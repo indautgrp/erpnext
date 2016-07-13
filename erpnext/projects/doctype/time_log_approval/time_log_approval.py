@@ -14,7 +14,7 @@ class TimeLogApproval(Document):
 			return
 
 		dl = frappe.db.sql("""select name, employee_name, date_worked, hours,
-					     activity_type, project, task, support_ticket, note, leave_application
+					     activity_type, project, task, support_ticket, note, leave_application, quotation_
 			from
 				`tabTime Log` 
 			where
@@ -36,6 +36,7 @@ class TimeLogApproval(Document):
 			nl.support_ticket = d.support_ticket
 			nl.note = d.note
 			nl.leave_application = d.leave_application
+			nl.quotation = d.quotation_
 
 	def approve_time_log(self):
 		time_logs = []
