@@ -44,7 +44,7 @@ class TimeLogApproval(Document):
 
 		for d in self.get('time_log_list'):
 
-			if d.action == 'Approved':
+			if d.approved:
 				if self.has_action_permission('Approve'):
 					time_log = frappe.get_doc('Time Log', d.time_log_id)
 					time_log.submit()
@@ -52,7 +52,7 @@ class TimeLogApproval(Document):
 					time_logs_approved.append(d.time_log_id)
 				else:
 					msgprint("Not permitted to Approve")
-			if d.action == 'Rejected':
+			if d.rejected:
 				if self.has_action_permission('Reject'):
 					time_log = frappe.get_doc('Time Log', d.time_log_id)
 					time_log.workflow_state = "Rejected"

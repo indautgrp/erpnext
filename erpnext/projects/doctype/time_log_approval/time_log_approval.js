@@ -33,3 +33,38 @@ frappe.ui.form.on('Time Log Approval', {
 		});
 	}
 });
+
+frappe.ui.form.on("Time Log Approve Detail", "rejected", function(frm, cdt, cdn) {
+	var item = frappe.get_doc(cdt,cdn);
+	if (item.rejected) {
+		if (item.approved) {
+			frappe.model.set_value(cdt, cdn, "rejected", 0);
+
+			frappe.confirm(__("Do you want to reset Approved check box?"), function() {
+							
+						frappe.model.set_value(cdt, cdn, "approved", 0);
+						frappe.model.set_value(cdt, cdn, "rejected", 1);						
+			});
+			
+		}
+	}
+
+});
+
+frappe.ui.form.on("Time Log Approve Detail", "approved", function(frm, cdt, cdn) {
+	var item = frappe.get_doc(cdt,cdn);
+	if (item.approved) {
+		if (item.rejected) {
+			frappe.model.set_value(cdt, cdn, "approved", 0);
+
+			frappe.confirm(__("Do you want to reset Rejected check box?"), function() {
+							
+						frappe.model.set_value(cdt, cdn, "rejected", 0);
+						frappe.model.set_value(cdt, cdn, "approved", 1);
+				
+			});
+			
+		}
+	}
+
+});
