@@ -89,7 +89,7 @@ def make_new_document(reference_doc, date_field, posting_date):
 		date_field: posting_date,
 		"from_date": from_date,
 		"to_date": to_date,
-		"next_date": get_next_date(from_date, mcount,cint(reference_doc.repeat_on_day_of_month))
+		"next_date": get_next_date(from_date, mcount-1,cint(reference_doc.repeat_on_day_of_month))
 	})
 
 	# copy document fields
@@ -209,9 +209,9 @@ def set_next_date(doc, posting_date):
 	if not doc.repeat_on_day_of_month:
 		msgprint(_("Please enter 'Repeat on Day of Month' field value"), raise_exception=1)
 
-	next_date = doc.next_date or get_next_date(doc.from_date, month_map[doc.recurring_type],
+	next_date = doc.next_date or get_next_date(doc.from_date, month_map[doc.recurring_type]-1,
 		cint(doc.repeat_on_day_of_month))
 
-	doc.db_set('next_date', next_date)
+	doc.db_set('next_date', next_date)	
 
 	msgprint(_("Next Recurring {0} will be created on {1}").format(doc.doctype, next_date))
