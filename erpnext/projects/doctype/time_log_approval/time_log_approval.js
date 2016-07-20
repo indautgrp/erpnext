@@ -7,6 +7,13 @@ frappe.ui.form.on('Time Log Approval', {
 
 		frm.set_value("from_date", frappe.datetime.month_start());
 		frm.set_value("to_date", frappe.datetime.month_end());
+		frm.set_value("employee", '');
+		frm.set_query("employee", function(doc) {
+			return {
+				query :"erpnext.controllers.queries.employee_query",
+				doctype : "Time Log Approval"
+			}
+		});
 	},
 
 	refresh: function(frm) {
