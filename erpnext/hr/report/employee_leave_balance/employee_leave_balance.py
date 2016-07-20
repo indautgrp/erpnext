@@ -25,7 +25,8 @@ def get_columns(leave_types):
 	]
 
 	for leave_type in leave_types:
-		columns.append(_(leave_type) + " " + _("Allocated") + ":Float:160")
+		columns.append(_("New") + " " + _(leave_type) + " " + ":Float:160")
+		columns.append(_("Total") + " " + _(leave_type) + " " + ":Float:160")
 		columns.append(_(leave_type) + " " + _("Taken") + ":Float:160")
 		columns.append(_(leave_type) + " " + _("Balance") + ":Float:160")
 		
@@ -57,8 +58,9 @@ def get_data(filters, leave_types):
 			allocation_records = allocation_records_based_on_to_date.get(employee.name, frappe._dict())
 			allocation = allocation_records.get(leave_type, frappe._dict())
 			total_leaves_allocated = flt(allocation.total_leaves_allocated)
+			new_leaves_allocated = flt(allocation.new_leaves_allocated)
 				
-			row += [total_leaves_allocated,leaves_taken, closing]
+			row += [new_leaves_allocated, total_leaves_allocated, leaves_taken, closing]
 			
 		data.append(row)
 		
