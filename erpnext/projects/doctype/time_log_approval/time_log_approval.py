@@ -12,16 +12,21 @@ class TimeLogApproval(Document):
 		if not (self.from_date and self.to_date):
 			msgprint("From Date and To Date are Mandatory")
 			return
+		
+		additional_conditions = ''
+		if self.employee:
+			additional_conditions = " and employee = %(employee)s"
 
 		dl = frappe.db.sql("""select name, employee_name, date_worked, hours,
 					     activity_type, project, task, support_ticket, note, leave_application, quotation_
 			from
 				`tabTime Log` 
 			where
-				date_worked >= %s and date_worked <= %s and docstatus=0 and workflow_state='Pending'
-				order by date_worked DESC, name DESC""" %
-				('%s', '%s'), (self.from_date, self.to_date), as_dict=1)
-
+				date_worked >= %(from_date)s and date_worked <= %(to_date)s and docstatus=0 and workflow_state='Pending'
+				{additional_conditions}
+				order by date_worked DESC, name DESC""".format(additional_conditions=additional_conditions),
+				{"from_date": self.from_date, "to_date": self.to_date, "employee": self.employee}, as_dict=1)
+				
 		self.set('time_log_list', [])
 
 		for d in dl:
@@ -85,10 +90,3 @@ class TimeLogApproval(Document):
 				break
 
 		return has_action_permission
-			
-
-			
-		
-			
-
-			
