@@ -319,7 +319,7 @@ def get_leave_allocation_records(date, employee=None):
 	conditions = (" and employee='%s'" % employee) if employee else ""
 
 	leave_allocation_records = frappe.db.sql("""
-		select employee, leave_type, total_leaves_allocated, from_date, to_date
+		select employee, leave_type, total_leaves_allocated, new_leaves_allocated, from_date, to_date
 		from `tabLeave Allocation`
 		where %s between from_date and to_date and docstatus=1 {0}""".format(conditions), (date), as_dict=1)
 
@@ -328,7 +328,8 @@ def get_leave_allocation_records(date, employee=None):
 		allocated_leaves.setdefault(d.employee, frappe._dict()).setdefault(d.leave_type, frappe._dict({
 			"from_date": d.from_date,
 			"to_date": d.to_date,
-			"total_leaves_allocated": d.total_leaves_allocated
+			"total_leaves_allocated": d.total_leaves_allocated,
+			"new_leaves_allocated": d.new_leaves_allocated
 		}))
 
 	return allocated_leaves
