@@ -69,6 +69,7 @@ class Quotation(SellingController):
 		#update enquiry status
 		self.set_status()
 		self.update_opportunity()
+		frappe.db.set(self, 'status', 'Cancelled')
 
 	def print_other_charges(self,docname):
 		print_lst = []
