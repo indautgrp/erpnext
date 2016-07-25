@@ -17,7 +17,7 @@ def execute(filters=None):
 	
 	data = []
 	for ss in salary_slips:
-		row = [ss.employee, ss.employee_name, ss.branch, ss.department, ss.designation, 
+		row = [ss.name, ss.employee, ss.employee_name, ss.branch, ss.department, ss.designation,
 			ss.company, ss.month, ss.leave_withut_pay, ss.payment_days]
 			
 		for e in earning_types:
@@ -36,7 +36,7 @@ def execute(filters=None):
 	
 def get_columns(salary_slips):
 	columns = [
-		_("Employee") + ":Link/Employee:120", _("Employee Name") + "::140", _("Branch") + ":Link/Branch:120", 
+		_("Salary Slip ID") + ":Link/Salary Slip:150",_("Employee") + ":Link/Employee:120", _("Employee Name") + "::140", _("Branch") + ":Link/Branch:120",
 		_("Department") + ":Link/Department:120", _("Designation") + ":Link/Designation:120",
 		 _("Company") + ":Link/Company:120", _("Month") + "::80", _("Leave Without Pay") + ":Float:130", 
 		_("Payment Days") + ":Float:120"
@@ -52,8 +52,8 @@ def get_columns(salary_slips):
 		
 	columns = columns + [(e + ":Currency:120") for e in earning_types] + \
 		["Arrear Amount:Currency:120", "Leave Encashment Amount:Currency:150", 
-		"Gross Pay:Currency:120"] + [(d + ":Currency:120") for d in ded_types] + \
-		["Total Deduction:Currency:120", "Net Pay:Currency:120"]
+		"Total Earnings:Currency:120"] + [(d + ":Currency:120") for d in ded_types] + \
+		["Total Deduction:Currency:120", "Net Payable:Currency:120"]
 
 	return columns, earning_types, ded_types
 	
