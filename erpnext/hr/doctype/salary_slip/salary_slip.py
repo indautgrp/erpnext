@@ -59,9 +59,8 @@ class SalarySlip(TransactionBase):
 		if self.employee:
 			joining_date, relieving_date = frappe.db.get_value("Employee", self.employee,
 				["date_of_joining", "relieving_date"])
-
+			
 			self.get_leave_details(joining_date, relieving_date)
-
 			struct = self.check_sal_struct(joining_date, relieving_date)
 			if struct:
 				self.set("earnings", [])
@@ -101,14 +100,18 @@ class SalarySlip(TransactionBase):
 
 		if not self.month:
 			self.month = "%02d" % getdate(nowdate()).month
-
+		
 		if not joining_date:
+			get_type = None
 			joining_date, relieving_date = frappe.db.get_value("Employee", self.employee,
 				["date_of_joining", "relieving_date"])
+		else:
+			get_type = "working"
 
 		m = get_month_details(self.fiscal_year, self.month)
-		holidays = self.get_holidays_for_employee(m['month_start_date'], m['month_end_date'])
-
+		
+		holidays = self.get_holidays_for_employee(m['month_start_date'], m['month_end_date'], get_type)
+		
 		working_days = m["month_days"]
 		if not cint(frappe.db.get_value("HR Settings", None, "include_holidays_in_total_working_days")):
 			working_days -= len(holidays)
@@ -146,17 +149,41 @@ class SalarySlip(TransactionBase):
 
 		return payment_days
 
-	def get_holidays_for_employee(self, start_date, end_date):
+	def get_holidays_for_employee(self, start_date, end_date, get_type=None):
 		holiday_list = get_holiday_list_for_employee(self.employee)
-		holidays = frappe.db.sql_list('''select holiday_date from `tabHoliday`
-			where
-				parent=%(holiday_list)s
-				and holiday_date >= %(start_date)s
+
+		count, d_count = frappe.db.sql('''select count(*),count(distinct holiday_date) from `tabHoliday`
+				where holiday_date >= %(start_date)s
 				and holiday_date <= %(end_date)s''', {
-					"holiday_list": holiday_list,
 					"start_date": start_date,
 					"end_date": end_date
-				})
+				})[0]
+		
+		if count == d_count:
+			if count == 0 and get_type == "working":
+				frappe.msgprint(_("No Holiday lists have been found for in this period.The default Holiday list is {0} as specified in the Company.").format(holiday_list))
+
+			holidays = frappe.db.sql_list('''select holiday_date from `tabHoliday`
+				where holiday_date >= %(start_date)s
+					and holiday_date <= %(end_date)s''', {
+						"start_date": start_date,
+						"end_date": end_date
+					})
+		else:
+			if get_type == "working":
+				frappe.msgprint(_("Multiple holiday lists have been found for the same period. The default Holiday list {0} has been selected.").format(holiday_list))
+
+			holidays = frappe.db.sql_list('''select holiday_date from `tabHoliday`
+				where
+					parent=%(holiday_list)s
+					and holiday_date >= %(start_date)s
+					and holiday_date <= %(end_date)s''', {
+						"holiday_list": holiday_list,
+						"start_date": start_date,
+						"end_date": end_date
+					})
+			if len(holidays) == 0 and get_type == "working":
+				frappe.msgprint(_("There is no Holiday Date in this payslip period."))
 
 		holidays = [cstr(i) for i in holidays]
 
