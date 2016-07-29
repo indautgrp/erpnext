@@ -161,7 +161,7 @@ class SalarySlip(TransactionBase):
 		
 		if count == d_count:
 			if count == 0 and get_type == "working":
-				frappe.msgprint(_("No Holiday lists have been found for in this period.The default Holiday list is {0} as specified in the Company.").format(holiday_list))
+				frappe.msgprint(_("No Holiday lists have been found for in this period. The default Holiday list is {0} as specified in the Company.").format(holiday_list))
 
 			holidays = frappe.db.sql_list('''select holiday_date from `tabHoliday`
 				where holiday_date >= %(start_date)s
@@ -171,7 +171,7 @@ class SalarySlip(TransactionBase):
 					})
 		else:
 			if get_type == "working":
-				frappe.msgprint(_("Multiple holiday lists have been found for the same period. The default Holiday list {0} has been selected.").format(holiday_list))
+				frappe.msgprint(_("Multiple Holiday lists have been found for the same period. The default Holiday list {0} has been selected.").format(holiday_list))
 
 			holidays = frappe.db.sql_list('''select holiday_date from `tabHoliday`
 				where
@@ -182,8 +182,8 @@ class SalarySlip(TransactionBase):
 						"start_date": start_date,
 						"end_date": end_date
 					})
-			if len(holidays) == 0 and get_type == "working":
-				frappe.msgprint(_("There is no Holiday Date in this payslip period."))
+			#if len(holidays) == 0 and get_type == "working":
+			#	frappe.msgprint(_("There is no Holiday Date in this payslip period."))
 
 		holidays = [cstr(i) for i in holidays]
 
