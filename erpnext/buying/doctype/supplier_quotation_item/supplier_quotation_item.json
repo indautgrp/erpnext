@@ -885,7 +885,7 @@
    "unique": 0
   }, 
   {
-   "allow_on_submit": 0, 
+   "allow_on_submit": 1, 
    "bold": 0, 
    "collapsible": 0, 
    "fieldname": "prevdoc_docname", 
@@ -1087,7 +1087,7 @@
  "issingle": 0, 
  "istable": 1, 
  "max_attachments": 0, 
- "modified": "2016-08-10 12:04:01.479828", 
+ "modified": "2016-08-10 13:22:28.803020", 
  "modified_by": "Administrator", 
  "module": "Buying", 
  "name": "Supplier Quotation Item", 

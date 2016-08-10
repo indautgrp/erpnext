@@ -1067,7 +1067,7 @@
    "width": "150px"
   }, 
   {
-   "allow_on_submit": 0, 
+   "allow_on_submit": 1, 
    "bold": 0, 
    "collapsible": 0, 
    "fieldname": "purchase_order", 
@@ -1146,7 +1146,7 @@
    "unique": 0
   }, 
   {
-   "allow_on_submit": 0, 
+   "allow_on_submit": 1, 
    "bold": 0, 
    "collapsible": 0, 
    "fieldname": "purchase_receipt", 
@@ -1287,7 +1287,7 @@
  "issingle": 0, 
  "istable": 1, 
  "max_attachments": 0, 
- "modified": "2016-08-10 12:05:45.421734", 
+ "modified": "2016-08-10 13:25:34.265410", 
  "modified_by": "Administrator", 
  "module": "Accounts", 
  "name": "Purchase Invoice Item", 

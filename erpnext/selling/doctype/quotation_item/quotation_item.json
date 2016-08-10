@@ -962,7 +962,7 @@
    "width": "150px"
   }, 
   {
-   "allow_on_submit": 0, 
+   "allow_on_submit": 1, 
    "bold": 0, 
    "collapsible": 0, 
    "fieldname": "prevdoc_docname", 
@@ -1139,7 +1139,7 @@
  "istable": 1, 
  "max_attachments": 0, 
  "menu_index": 0, 
- "modified": "2016-08-10 12:01:51.527437", 
+ "modified": "2016-08-10 13:15:32.329098", 
  "modified_by": "Administrator", 
  "module": "Selling", 
  "name": "Quotation Item", 

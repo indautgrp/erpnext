@@ -1188,7 +1188,7 @@
    "width": "120px"
   }, 
   {
-   "allow_on_submit": 0, 
+   "allow_on_submit": 1, 
    "bold": 0, 
    "collapsible": 0, 
    "fieldname": "against_sales_order", 
@@ -1214,7 +1214,7 @@
    "unique": 0
   }, 
   {
-   "allow_on_submit": 0, 
+   "allow_on_submit": 1, 
    "bold": 0, 
    "collapsible": 0, 
    "fieldname": "against_sales_invoice", 
@@ -1387,7 +1387,7 @@
  "issingle": 0, 
  "istable": 1, 
  "max_attachments": 0, 
- "modified": "2016-08-10 12:03:20.722993", 
+ "modified": "2016-08-10 13:21:03.759230", 
  "modified_by": "Administrator", 
  "module": "Stock", 
  "name": "Delivery Note Item", 
