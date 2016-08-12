@@ -11,7 +11,7 @@ from frappe.model.document import Document
 class LeaveControlPanel(Document):
 	def get_employees(self):
 		lst1 = [[self.employee_type,"employment_type"],[self.branch,"branch"],[self.designation,"designation"],[self.department, "department"]]
-		condition = "where "
+		condition = "and "
 		flag = 0
 		for l in lst1:
 			if(l[0]):
@@ -20,7 +20,7 @@ class LeaveControlPanel(Document):
 				else:
 					condition += " and " + l[1]+ "= '" +l[0] +"'"
 				flag = 1
-		emp_query = "select name from `tabEmployee` "
+		emp_query = "select name from `tabEmployee` where status = 'Active'"
 		if flag == 1:
 			emp_query += condition
 		e = frappe.db.sql(emp_query)
