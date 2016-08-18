@@ -73,7 +73,7 @@ class StockEntry(StockController):
 
 		if allow_negative_stock and previous_stock_vouchers:
 			for voucher_type, voucher_no in previous_stock_vouchers:
-				frappe.msgprint(_("The posting date is after {0}: {1}, this will cause GL missing").format(voucher_type, voucher_no))
+				frappe.msgprint(_("The posting date is after {0}: {1}, this will cause missing data in the General Ledger").format(voucher_type, voucher_no))
 	
 	def get_previous_stock_vouchers(self, posting_date, posting_time, for_warehouses=None, for_items=None):
 		previous_stock_vouchers = []
