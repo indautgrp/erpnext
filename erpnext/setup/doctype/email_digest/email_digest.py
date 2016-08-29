@@ -254,7 +254,10 @@ class EmailDigest(Document):
 							card.diff = "+" + str(card.diff)
 							card.gain = True
 
-						card.last_value = self.fmt_money(card.last_value)
+						if key == "credit_balance":
+							card.last_value = card.last_value * -1
+						card.last_value = self.fmt_money(card.last_value,False if key in ("bank_balance", "credit_balance") else True)
+
 
 					if card.billed_value:
 						card.billed = int(flt(card.billed_value) / card.value * 100)
@@ -267,7 +270,9 @@ class EmailDigest(Document):
 						else:
 							card.delivered = "% Received " + str(card.delivered)
 						
-					card.value = self.fmt_money(card.value)
+					if key =="credit_balance":
+						card.value = card.value *-1
+					card.value = self.fmt_money(card.value,False if key in ("bank_balance", "credit_balance") else True)
 
 					cache.setex(cache_key, card, 24 * 60 * 60)
 
@@ -516,8 +521,11 @@ class EmailDigest(Document):
 	def onload(self):
 		self.get_next_sending()
 
-	def fmt_money(self, value):
-		return fmt_money(abs(value), currency = self.currency)
+	def fmt_money(self, value,absol=True):
+		if absol:
+			return fmt_money(abs(value), currency = self.currency)
+		else:
+			return fmt_money(value, currency=self.currency)
 
 def send():
 	now_date = now_datetime().date()
