@@ -49,7 +49,8 @@ class PurchaseReceipt(BuyingController):
 	def validate(self):
 		super(PurchaseReceipt, self).validate()
 
-		self.set_status()
+		if not self._action=="submit":
+			self.set_status()
 		self.po_required()
 		self.validate_with_previous_doc()
 		self.validate_purchase_return()
