@@ -27,7 +27,7 @@ def execute(filters=None):
 	data.extend(asset or [])
 	data.extend(liability or [])	
 	data.extend(equity or [])
-	if opening_balance:
+	if opening_balance >=0.01:
 		unclosed ={
 			"account_name": "'" + _("Unclosed Fiscal Years") + "'",
 			"account": None,
