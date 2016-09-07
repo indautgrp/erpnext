@@ -27,9 +27,9 @@ def execute(filters=None):
 	data.extend(asset or [])
 	data.extend(liability or [])	
 	data.extend(equity or [])
-	if opening_balance >=0.01:
+	if round(opening_balance,2) !=0:
 		unclosed ={
-			"account_name": "'" + _("Unclosed Fiscal Years") + "'",
+			"account_name": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
 			"account": None,
 			"warn_if_negative": True,
 			"currency": frappe.db.get_value("Company", filters.company, "default_currency")

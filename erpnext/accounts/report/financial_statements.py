@@ -112,6 +112,8 @@ def get_data(company, root_type, balance_must_be, period_list,
 	out = filter_out_zero_value_rows(out, parent_children_map)
 	
 	if out:
+		if root_type in ("Liability","Equity"):
+			balance_must_be = root_type
 		add_total_row(out, balance_must_be, period_list, company_currency)
 
 	return out
