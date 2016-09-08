@@ -67,18 +67,6 @@ def get_data():
 			]
 		},
 		{
-			"label": _("Main Reports"),
-			"icon": "icon-list",
-			"items": [
-				{
-					"type": "report",
-					"is_query_report": True,
-					"name": "Project Analytics",
-					"doctype": "Week Range"
-				},
-			]
-		},
-		{
 			"label": _("Reports"),
 			"icon": "icon-list",
 			"items": [
