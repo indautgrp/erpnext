@@ -52,8 +52,8 @@ def get_columns(salary_slips):
 		
 	columns = columns + [(e + ":Currency:120") for e in earning_types] + \
 		["Arrear Amount:Currency:120", "Leave Encashment Amount:Currency:150", 
-		"Gross Pay:Currency:120"] + [(d + ":Currency:120") for d in ded_types] + \
-		["Total Deduction:Currency:120", "Net Pay:Currency:120"]
+		"Total Earnings:Currency:120"] + [(d + ":Currency:120") for d in ded_types] + \
+		["Total Deduction:Currency:120", "Net Payable:Currency:120"]
 
 	return columns, earning_types, ded_types
 	
