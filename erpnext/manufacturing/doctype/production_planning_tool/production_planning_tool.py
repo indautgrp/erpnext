@@ -306,13 +306,17 @@ class ProductionPlanningTool(Document):
 		self.get_raw_materials(bom_dict)
 		return self.get_csv()
 
-	def get_raw_materials(self, bom_dict):
+	def get_raw_materials(self, bom_dict,non_stock_item=False):
 		""" Get raw materials considering sub-assembly items
 			{
 				"item_code": [qty_required, description, stock_uom, min_order_qty]
 			}
 		"""
 		item_list = []
+		if non_stock_item:
+			non_stock_condition = ""
+		else:
+			non_stock_condition = "and item.is_stock_item = 1"
 
 		for bom, so_wise_qty in bom_dict.items():
 			bom_wise_item_details = {}
@@ -325,8 +329,8 @@ class ProductionPlanningTool(Document):
 					from `tabBOM Explosion Item` fb, `tabBOM` bom, `tabItem` item
 					where bom.name = fb.parent and item.name = fb.item_code
 					and (item.is_sub_contracted_item = 0 or ifnull(item.default_bom, "")="")
-					and item.is_stock_item = 1
-					and fb.docstatus<2 and bom.name=%s
+					""" + ("and item.is_stock_item = 1","")[non_stock_item] + """
+						and fb.docstatus<2 and bom.name=%s
 					group by fb.item_code, fb.stock_uom""", bom, as_dict=1):
 						bom_wise_item_details.setdefault(d.item_code, d)
 			else:
@@ -336,9 +340,9 @@ class ProductionPlanningTool(Document):
 					ifnull(sum(bom_item.qty/ifnull(bom.quantity, 1)), 0) as qty,
 					bom_item.description, bom_item.stock_uom, item.min_order_qty
 					from `tabBOM Item` bom_item, `tabBOM` bom, tabItem item
-					where bom.name = bom_item.parent and bom.name = %s and bom_item.docstatus < 2
+					where bom.name = bom_item.parent and bom.name=%s and bom_item.docstatus < 2
 					and bom_item.item_code = item.name
-					and item.is_stock_item = 1
+					""" + ("and item.is_stock_item = 1","")[non_stock_item] + """
 					group by bom_item.item_code""", bom, as_dict=1):
 						bom_wise_item_details.setdefault(d.item_code, d)
 			for item, item_details in bom_wise_item_details.items():
@@ -380,7 +384,7 @@ class ProductionPlanningTool(Document):
 			frappe.throw(_("Please enter Warehouse for which Material Request will be raised"))
 
 		bom_dict = self.get_so_wise_planned_qty()
-		self.get_raw_materials(bom_dict)
+		self.get_raw_materials(bom_dict,self.create_material_requests_non_stock_request)
 
 		if self.item_dict:
 			self.create_material_request()
