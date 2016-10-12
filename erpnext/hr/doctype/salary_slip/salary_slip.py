@@ -190,7 +190,7 @@ class SalarySlip(TransactionBase):
 		if count == d_count:
 			if count == 0 and get_type == "working":
 				frappe.msgprint(_(
-					"No Holiday lists have been found for in this period. The default Holiday list is {0} as specified in the Company.").format(
+					"No Holiday lists have been found for in this period.The default Holiday list is {0} as specified in the Company.").format(
 					holiday_list))
 
 			holidays = frappe.db.sql_list('''select holiday_date from `tabHoliday`
@@ -202,7 +202,7 @@ class SalarySlip(TransactionBase):
 		else:
 			if get_type == "working":
 				frappe.msgprint(_(
-					"Multiple Holiday lists have been found for the same period. The default Holiday list {0} has been selected.").format(
+					"Multiple holiday lists have been found for the same period. The default Holiday list {0} has been selected.").format(
 					holiday_list))
 
 			holidays = frappe.db.sql_list('''select holiday_date from `tabHoliday`
@@ -214,6 +214,8 @@ class SalarySlip(TransactionBase):
 				"start_date": start_date,
 				"end_date": end_date
 			})
+			if len(holidays) == 0 and get_type == "working":
+				frappe.msgprint(_("There is no Holiday Date in this payslip period."))
 
 		holidays = [cstr(i) for i in holidays]
 
@@ -293,8 +295,8 @@ class SalarySlip(TransactionBase):
 		self.update_status()
 
 	def email_salary_slip(self):
-		receiver = frappe.db.get_value("Employee", self.employee, "company_email") or \
-			frappe.db.get_value("Employee", self.employee, "personal_email")
+		receiver = frappe.db.get_value("Employee", self.employee, "prefered_email")
+
 		if receiver:
 			subj = 'Salary Slip - from {0} to {1}, fiscal year {2}'.format(self.start_date, self.end_date, self.fiscal_year)
 			frappe.sendmail([receiver], subject=subj, message = _("Please see attachment"),
