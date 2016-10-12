@@ -1,0 +1,5 @@
+{% if (doc.item_code !="TITLE") -%}
+	{{ doc.get_formatted("amount") }}
+{%- else -%}
+	
+{%- endif %}
