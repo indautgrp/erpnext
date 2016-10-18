@@ -320,3 +320,4 @@ execute:frappe.db.sql("update `tabTimesheet` ts, `tabEmployee` emp set ts.employ
 execute:frappe.db.sql("delete from `tabTimesheet Detail` where NOT EXISTS (select name from `tabTimesheet` where name = `tabTimesheet Detail`.parent)")
 erpnext.patches.v7_0.update_mode_of_payment_type
 erpnext.patches.v7_0.rename_payroll_date_to_posting
+erpnext.patches.v7_0.rename_project_name_to_project
