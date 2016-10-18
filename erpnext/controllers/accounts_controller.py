@@ -252,6 +252,15 @@ class AccountsController(TransactionBase):
 			'party': None,
 			'project': self.get("project")
 		})
+
+		account_report_type = frappe.db.get_value("Account", args["account"], "report_type")
+
+		if account_report_type != "Profit and Loss":
+			if args.has_key("project"):
+				args["project"] = ''
+			if args.has_key("support_ticket"):
+				args["support_ticket"] = ''
+
 		gl_dict.update(args)
 
 		if not account_currency:
