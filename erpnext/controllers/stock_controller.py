@@ -52,6 +52,8 @@ class StockController(AccountsController):
 							"account": warehouse_account[sle.warehouse]["name"],
 							"against": detail.expense_account,
 							"cost_center": detail.cost_center,
+							"project": self.get("project"),
+							"support_ticket": self.get("support_ticket"),
 							"remarks": self.get("remarks") or "Accounting Entry for Stock",
 							"debit": flt(sle.stock_value_difference, 2),
 						}, warehouse_account[sle.warehouse]["account_currency"]))
@@ -61,6 +63,7 @@ class StockController(AccountsController):
 							"account": detail.expense_account,
 							"against": warehouse_account[sle.warehouse]["name"],
 							"cost_center": detail.cost_center,
+							"support_ticket": self.get("support_ticket"),
 							"remarks": self.get("remarks") or "Accounting Entry for Stock",
 							"credit": flt(sle.stock_value_difference, 2),
 							"project": detail.get("project") or self.get("project")
