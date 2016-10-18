@@ -389,7 +389,8 @@ class PurchaseInvoice(BuyingController):
 							"debit": warehouse_debit_amount,
 							"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 							"cost_center": item.cost_center,
-							"project": item.project
+							"project": item.project,
+							"support_ticket": item.support_ticket
 						}, account_currency)
 					)
 
