@@ -336,8 +336,10 @@ execute:frappe.db.sql("update `tabSalary Slip` set posting_date=creation")
 erpnext.patches.v7_1.update_portal_roles
 erpnext.patches.v7_1.set_total_amount_currency_in_je
 finally:erpnext.patches.v7_0.update_timesheet_communications
+erpnext.patches.v7_0.rename_payroll_date_to_posting
 erpnext.patches.v7_0.update_status_of_zero_amount_sales_order
 erpnext.patches.v7_1.add_field_for_task_dependent
+erpnext.patches.v7_0.rename_project_name_to_project
 erpnext.patches.v7_0.repost_bin_qty_and_item_projected_qty
 erpnext.patches.v7_1.set_prefered_contact_email
 execute:frappe.reload_doc('accounts', 'doctype', 'accounts_settings')
