@@ -19,7 +19,7 @@ def execute():
 		args = get_timelog_data(data)
 		add_timesheet_detail(time_sheet, args)
 		time_sheet.employee = data.employee
-		time_sheet.note = data.note
+		#time_sheet.note = data.note
 		time_sheet.company = company
 
 		time_sheet.set_status()
@@ -54,5 +54,12 @@ def get_timelog_data(data):
 		'billing_rate': data.billing_rate,
 		'billing_amount': data.billing_amount,
 		'costing_rate': data.costing_rate,
-		'costing_amount': data.costing_amount
+		'costing_amount': data.costing_amount,
+		'date_worked':data.date_worked,
+		'quotation':data.quotation_,
+		'support_ticket': data.support_ticket,
+		'maintenance_visit': data.maintenance_visit,
+		'warranty_claim': data.customer_issue,
+		'leave_application': data.leave_application,
+		'note': data.note
 	}
