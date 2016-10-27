@@ -71,7 +71,7 @@ def get_data(filters, show_party_name):
 	# Add total row
 	if total_debit or total_credit:
 		data.append({
-			"party": "'" + _("Totals") + "'",
+			"party": _("Totals"),
 			"debit": total_debit,
 			"credit": total_credit,
 			"currency": company_currency

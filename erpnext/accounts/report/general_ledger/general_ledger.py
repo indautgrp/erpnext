@@ -179,7 +179,7 @@ def get_data_with_opening_closing(filters, account_details, gl_entries):
 				account_closing_in_account_currency = acc_dict.opening_in_account_currency \
 					+ acc_dict.total_debit_in_account_currency - acc_dict.total_credit_in_account_currency
 
-				data += [{"account": "'" + _("Totals") + "'", "debit": acc_dict.total_debit,
+				data += [{"account": _("Totals"), "debit": acc_dict.total_debit,
 					"credit": acc_dict.total_credit},
 					get_balance_row(_("Closing (Opening + Totals)"),
 						account_closing, account_closing_in_account_currency), {}]
@@ -194,7 +194,7 @@ def get_data_with_opening_closing(filters, account_details, gl_entries):
 	# Total debit and credit between from and to date
 	if total_debit or total_credit:
 		data.append({
-			"account": "'" + _("Totals") + "'",
+			"account": _("Totals"),
 			"debit": total_debit,
 			"credit": total_credit,
 			"debit_in_account_currency": total_debit_in_account_currency,
@@ -269,7 +269,7 @@ def get_accountwise_gle(filters, gl_entries, gle_map):
 
 def get_balance_row(label, balance, balance_in_account_currency=None):
 	balance_row = {
-		"account": "'" + label + "'",
+		"account": label,
 		"debit": balance if balance > 0 else 0,
 		"credit": -1*balance if balance < 0 else 0
 	}
