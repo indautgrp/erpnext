@@ -25,7 +25,7 @@ def execute(filters=None):
 	data.extend(equity or [])
 	if opening_balance and round(opening_balance,2) !=0:
 		unclosed ={
-			"account_name": "'" + _("Unclosed Fiscal Years Profit / Loss (Credit)") + "'",
+			"account_name": _("Unclosed Fiscal Years Profit / Loss (Credit)"),
 			"account": None,
 			"warn_if_negative": True,
 			"currency": frappe.db.get_value("Company", filters.company, "default_currency")
@@ -51,13 +51,13 @@ def get_provisional_profit_loss(asset, liability, equity, period_list, company):
 		total = total_total=0
 		currency = frappe.db.get_value("Company", company, "default_currency")
 		provisional_profit_loss = {
-			"account_name": "'" + _("Provisional Profit / Loss (Credit)") + "'",
+			"account_name": _("Provisional Profit / Loss (Credit)"),
 			"account": None,
 			"warn_if_negative": True,
 			"currency": currency
 		}
 		total_row = {
-			"account_name": "'" + _("Total (Credit)") + "'",
+			"account_name": _("Total (Credit)"),
 			"account": None,
 			"warn_if_negative": True,
 			"currency": currency
