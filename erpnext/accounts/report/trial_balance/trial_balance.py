@@ -131,7 +131,7 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, filters)
 
 	total_row = {
 		"account": None,
-		"account_name": _("Total"),
+		"account_name": "'" + _("Total") + "'",
 		"warn_if_negative": True,
 		"debit": 0.0,
 		"credit": 0.0
