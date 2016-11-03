@@ -10,13 +10,13 @@ def execute():
 			WHERE 
 				tsd.parent = ts.name AND tl.from_time = tsd.from_time AND tl.to_time = tsd.to_time 
 				AND tl.hours = tsd.hours AND tl.billing_rate = tsd.billing_rate AND tsd.idx=1 
-				AND tl.docstatus < 2""", as_dict=1)
+				AND tl.employee = ts.employee AND tl.note = tsd.note AND tl.docstatus < 2""", as_dict=1)
 				
 		for data in timesheet:
-			frappe.db.sql(""" update `tabTimesheet` set creation = %(creation)s,
+			frappe.db.sql("""update `tabTimesheet` set creation = %(creation)s,
 				owner = %(owner)s, modified = %(modified)s, modified_by = %(modified_by)s
 				where name = %(name)s""", data)
-								
+			
 			frappe.db.sql("""
 				update 
 					tabCommunication 
