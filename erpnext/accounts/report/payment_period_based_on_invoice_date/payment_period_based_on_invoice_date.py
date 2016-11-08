@@ -47,11 +47,11 @@ def validate_filters(filters):
 def get_columns(filters):
 	return [
 		_("Payment Document") + ":Link/DocType: 100",
-		_("Payment Entry") + ":Dynamic Link/"+_("Payment Document")+":140",
-		_("Party Type") + "::100", 
-		_("Party") + ":Dynamic Link/Party Type:140",
+		_("Payment Entry") + ":Dynamic Link/"+_("Payment Document")+":100",
+		_("Party Type") + "::90", 
+		_("Party") + ":Dynamic Link/Party Type:90",
 		_("Posting Date") + ":Date:100",
-		_("Invoice") + (":Link/Purchase Invoice:130" if filters.get("payment_type") == "Outgoing" else ":Link/Sales Invoice:130"),
+		_("Invoice") + (":Link/Purchase Invoice:100" if filters.get("payment_type") == "Outgoing" else ":Link/Sales Invoice:100"),
 		_("Invoice Posting Date") + ":Date:130", 
 		_("Payment Due Date") + ":Date:130", 
 		_("Debit") + ":Currency:120", 
@@ -89,6 +89,25 @@ def get_conditions(filters):
 		
 	if filters.get("to_date"):
 		conditions.append("posting_date <= %(to_date)s")
+
+	if filters.get("payment_type") == "Incoming":
+		conditions.append(""" ( not exists (
+						  select debit 
+						  from `tabJournal Entry Account` 
+						  where parent = voucher_no and ((account_type in ('Income Account', 'Chargeable', 'Expense Account')) 
+						  and debit > 0.0) 
+						  and ( select count(account_type) 
+						  from `tabJournal Entry Account` 
+						  where parent = voucher_no and (account_type = 'Receivable' and credit > 0.0)))) """)
+	else:
+		conditions.append(""" ( not exists (
+							select credit 
+							from `tabJournal Entry Account` 
+							left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type 
+							where `tabJournal Entry Account`.parent = voucher_no and root_type = 'Expense' and credit > 0.0 
+							and ( select count(`tabJournal Entry Account`.account_type) 
+							from `tabJournal Entry Account` 
+							where parent = voucher_no and debit > 0.0) > 0)) """)
 
 	return "and " + " and ".join(conditions) if conditions else ""
 
