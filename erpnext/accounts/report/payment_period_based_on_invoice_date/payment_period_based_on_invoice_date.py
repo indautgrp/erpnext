@@ -17,6 +17,9 @@ def execute(filters=None):
 
 	data = []
 	for d in entries:
+		if check_only_payment(d):
+			continue
+
 		invoice = invoice_details.get(d.against_voucher) or frappe._dict()
 		
 		if d.reference_type=="Purchase Invoice":
@@ -37,6 +40,13 @@ def execute(filters=None):
 		data.append(row)
 
 	return columns, data
+
+def check_only_payment(jv):
+	if frappe.db.sql("select account_type,reference_name from `tabJournal Entry Account` where parent = %s and ((account_type = 'Income Account' OR account_type = 'Chargeable') AND debit > 0.0)", jv.voucher_no):
+		if frappe.db.sql("select account_type,reference_name from `tabJournal Entry Account` where parent = %s and (account_type = 'Receivable' and credit > 0.0)", jv.voucher_no):
+			return True
+
+	return False
 
 def validate_filters(filters):
 	if (filters.get("payment_type") == "Incoming" and filters.get("party_type") == "Supplier") or \
