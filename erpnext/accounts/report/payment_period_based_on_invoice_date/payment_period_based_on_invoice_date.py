@@ -17,7 +17,7 @@ def execute(filters=None):
 
 	data = []
 	for d in entries:
-		if check_only_payment(d):
+		if check_only_payment(d, filters):
 			continue
 
 		invoice = invoice_details.get(d.against_voucher) or frappe._dict()
@@ -41,9 +41,17 @@ def execute(filters=None):
 
 	return columns, data
 
-def check_only_payment(jv):
-	if frappe.db.sql("select account_type,reference_name from `tabJournal Entry Account` where parent = %s and ((account_type = 'Income Account' OR account_type = 'Chargeable') AND debit > 0.0)", jv.voucher_no):
-		if frappe.db.sql("select account_type,reference_name from `tabJournal Entry Account` where parent = %s and (account_type = 'Receivable' and credit > 0.0)", jv.voucher_no):
+def check_only_payment(jv, filters):
+	if filters.get("payment_type") == "Incoming":
+		if frappe.db.sql("select debit "
+						 "from `tabJournal Entry Account` "
+						 "where parent = %(parent)s and ((account_type in ('Income Account', 'Chargeable', 'Expense Account')) and debit > 0.0) and (select count(account_type) from `tabJournal Entry Account` where parent = %(parent)s and (account_type = 'Receivable' and credit > 0.0))", {"parent": jv.voucher_no}):
+			return True
+	else:
+		if frappe.db.sql("select credit "
+						 "from `tabJournal Entry Account` "
+						 "left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type "
+						 "where `tabJournal Entry Account`.parent = %(parent)s and root_type = 'Expense' and credit > 0.0 and (select count(`tabJournal Entry Account`.account_type) from `tabJournal Entry Account` where parent = %(parent)s and debit > 0.0) > 0", {"parent": jv.voucher_no}):
 			return True
 
 	return False
@@ -57,11 +65,11 @@ def validate_filters(filters):
 def get_columns(filters):
 	return [
 		_("Payment Document") + ":Link/DocType: 100",
-		_("Payment Entry") + ":Dynamic Link/"+_("Payment Document")+":140",
-		_("Party Type") + "::100", 
-		_("Party") + ":Dynamic Link/Party Type:140",
+		_("Payment Entry") + ":Dynamic Link/"+_("Payment Document")+":100",
+		_("Party Type") + "::90", 
+		_("Party") + ":Dynamic Link/Party Type:90",
 		_("Posting Date") + ":Date:100",
-		_("Invoice") + (":Link/Purchase Invoice:130" if filters.get("payment_type") == "Outgoing" else ":Link/Sales Invoice:130"),
+		_("Invoice") + (":Link/Purchase Invoice:100" if filters.get("payment_type") == "Outgoing" else ":Link/Sales Invoice:100"),
 		_("Invoice Posting Date") + ":Date:130", 
 		_("Payment Due Date") + ":Date:130", 
 		_("Debit") + ":Currency:120", 
