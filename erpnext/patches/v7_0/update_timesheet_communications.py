@@ -9,9 +9,9 @@ def execute():
 				`tabTimesheet` ts, `tabTimesheet Detail` tsd, `tabTime Log` tl
 			WHERE 
 				tsd.parent = ts.name AND tl.from_time = tsd.from_time AND tl.to_time = tsd.to_time 
-				AND tl.hours = tsd.hours AND tl.billing_rate = tsd.billing_rate AND tsd.idx=1 
-				AND tl.employee = ts.employee AND tl.note = tsd.note AND tl.docstatus < 2""", as_dict=1)
-				
+				AND tl.hours = tsd.hours AND tsd.idx=1 AND tsd.activity_type = tl.activity_type
+				AND tl.employee = ts.employee AND ifnull(tl.note,'') = ifnull(tsd.note,'') and tl.docstatus = ts.docstatus""", as_dict=1)
+		
 		for data in timesheet:
 			frappe.db.sql("""update `tabTimesheet` set creation = %(creation)s,
 				owner = %(owner)s, modified = %(modified)s, modified_by = %(modified_by)s
@@ -25,3 +25,5 @@ def execute():
 				where 
 					reference_doctype = "Time Log" and reference_name = %(timelog)s
 			""", {'timesheet': data.name, 'timelog': data.timelogname}, auto_commit=1)
+
+			
