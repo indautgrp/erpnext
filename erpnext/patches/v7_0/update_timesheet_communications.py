@@ -25,5 +25,9 @@ def execute():
 				where 
 					reference_doctype = "Time Log" and reference_name = %(timelog)s
 			""", {'timesheet': data.name, 'timelog': data.timelogname}, auto_commit=1)
+			
+		frappe.db.sql("""update `tabTimesheet` ts ,`tabTimesheet Detail` tsd set ts.start_date = tsd.date_worked, 
+				ts.end_date = tsd.date_worked
+				where ts.name=tsd.parent and tsd.idx =1""",auto_commit=1)
 
 			
