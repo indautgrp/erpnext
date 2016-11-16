@@ -88,11 +88,11 @@ def get_columns(filters):
 		]
 
 	columns += [
-		_("Voucher Type") + "::120", _("Voucher No") + ":Dynamic Link/"+_("Voucher Type")+":160",
+		_("Voucher Type") + "::120", _("Voucher No") + ":Dynamic Link/"+_("Voucher Type")+":120",
 		_("Against Account") + ":Link/Account:120", _("Party Type") + "::80", _("Party") + "::150",
 		_("Cost Center") + ":Link/Cost Center:100", _("Project") + ":Link/Project:100",
 		_("Against Voucher Type") + "::120", _("Against Voucher") + ":Dynamic Link/"+_("Against Voucher Type")+":160",
-		_("Remarks") + "::400"
+		_("Issue") + ":Link/Issue:120",_("Remarks") + "::400", _("Root Type") + "::100", _("Report Type") + "::120"
 	]
 
 	return columns
@@ -118,10 +118,9 @@ def get_gl_entries(filters):
 		select
 			posting_date, account, party_type, party,
 			sum(ifnull(debit, 0)) as debit, sum(ifnull(credit, 0)) as credit,
-			voucher_type, voucher_no, cost_center, project, support_ticket, remarks, against, is_opening {select_fields},
-			against_voucher_type, against_voucher,
+			voucher_type, voucher_no, against, is_opening {select_fields}, cost_center, project,
+			against_voucher_type, against_voucher, remarks, support_ticket,
 			root_type, report_type
-			remarks, against, is_opening {select_fields}
 		from `tabGL Entry`, `tabAccount`
 		where `tabGL Entry`.account = `tabAccount`.name
 		and `tabGL Entry`.company=%(company)s {conditions}
@@ -294,8 +293,9 @@ def get_result_as_list(data, filters):
 			row += [d.get("debit_in_account_currency"), d.get("credit_in_account_currency")]
 
 		row += [d.get("voucher_type"), d.get("voucher_no"), d.get("against"),
-			d.get("party_type"), d.get("party"), d.get("project"), d.get("cost_center"), d.get("against_voucher_type"), d.get("against_voucher"), d.get("remarks"),
-			d.get("support_ticket"), d.get("root_type"), d.get("report_type")
+		    d.get("party_type"), d.get("party"), d.get("cost_center"), d.get("project"),
+		    d.get("against_voucher_type"), d.get("against_voucher"),
+			d.get("support_ticket"), d.get("remarks"), d.get("root_type"), d.get("report_type")
 		]
 
 		result.append(row)
