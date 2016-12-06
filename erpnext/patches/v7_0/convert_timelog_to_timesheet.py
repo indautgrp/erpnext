@@ -66,7 +66,7 @@ def get_timelog_data(data):
 		'costing_amount': data.costing_amount,
 		'date_worked':data.date_worked,
 		'quotation':data.quotation_,
-		'support_ticket': data.support_ticket,
+		'issue': data.support_ticket,
 		'maintenance_visit': data.maintenance_visit,
 		'warranty_claim': data.customer_issue,
 		'leave_application': data.leave_application,
