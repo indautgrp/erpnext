@@ -12,7 +12,7 @@ app_email = "info@erpnext.com"
 app_license = "GNU General Public License (v3)"
 source_link = "https://github.com/frappe/erpnext"
 
-error_report_email = "support@erpnext.com"
+error_report_email = "iagnext@ia-group.com.au"
 
 app_include_js = "assets/js/erpnext.min.js"
 app_include_css = "assets/css/erpnext.css"
