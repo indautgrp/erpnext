@@ -76,7 +76,7 @@ class StockEntry(StockController):
 					and warehouse = %(warehouse)s and qty_after_transaction < 0""",
 				    {"date":self.posting_date, "time":self.posting_time,"item_code":item.item_code,"warehouse":item.t_warehouse},as_dict=1)
 				if value:
-					frappe.throw(_('The Posting date in this Stock Entry is after the date ({0} {1}) on {2}: <a href="#Form/{2}/{3}">{3}</a> and will cause missing data in the General Ledger').format(
+					frappe.throw(_('The Posting date in this Stock Entry is after {0} {1} in {2}: <a href="#Form/{2}/{3}">{3}</a> Stock entries need to be before').format(
 						formatdate(self.posting_date), format_time(self.posting_time), value[0].voucher_type, value[0].voucher_no))
 
 	def validate_purpose(self):
