@@ -1,7 +1,7 @@
 // Copyright (c) 2016, Frappe Technologies Pvt. Ltd. and contributors
 // For license information, please see license.txt
 
-frappe.query_reports["TAX Analytics"] = {
+frappe.query_reports["Tax Analytics"] = {
     "filters": [
         {
             "fieldname": "company",
@@ -32,7 +32,7 @@ frappe.query_reports["TAX Analytics"] = {
         if (columnDef.df.fieldname == "rate") {
             value = dataContext.rate;
             
-            columnDef.df.link_onclick = "frappe.query_reports[\"TAX Analytics\"].open_sale_purchase_journal(" + JSON.stringify(dataContext) + ")";
+            columnDef.df.link_onclick = "frappe.query_reports['Tax Analytics'].open_sale_purchase_journal(" + JSON.stringify(dataContext) + ")";
             
             columnDef.df.is_tree = true;
         }

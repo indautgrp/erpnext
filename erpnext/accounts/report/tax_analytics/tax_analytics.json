@@ -7,12 +7,12 @@
  "doctype": "Report", 
  "idx": 0, 
  "is_standard": "Yes", 
- "modified": "2016-12-21 00:17:50.393013", 
+ "modified": "2017-01-10 00:17:50.393013", 
  "modified_by": "Administrator", 
  "module": "Accounts", 
- "name": "TAX Analytics", 
+ "name": "Tax Analytics", 
  "owner": "Administrator", 
- "ref_doctype": "Accounts", 
- "report_name": "TAX Analytics", 
+ "ref_doctype": "GL Entry", 
+ "report_name": "Tax Analytics", 
  "report_type": "Script Report"
 }
