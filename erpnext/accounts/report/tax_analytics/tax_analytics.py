@@ -13,10 +13,15 @@ def execute(filters=None):
 	if not filters: filters = {}
 
 	validate_date_range(filters)
+
 	columns = get_columns()
 	taxes = get_coa_taxes()
 
-	if (filters.accounting == "Accrual Accounting"):
+	if taxes == "":
+		frappe.msgprint(_("No account is set to show in tax report"))
+		return [], []
+
+	if filters.accounting == "Accrual Accounting":
 		data = get_data_accrual_accounting(filters, taxes)
 	else: # Cash Accounting
 		data = get_data_cash_accounting(filters, taxes)
@@ -58,13 +63,13 @@ def get_coa_taxes():
 def get_conditions_accrual_accounting(filters):
 	conditions = ""
 
-	if (filters.company):
+	if filters.company:
 		conditions += " and tabAccount.company = %(company)s"
 
-	if (filters.from_date):
+	if filters.from_date:
 		conditions += " and `tabGL Entry`.posting_date >= %(from_date)s"
 
-	if (filters.to_date):
+	if filters.to_date:
 		conditions += " and `tabGL Entry`.posting_date <= %(to_date)s"
 
 	return conditions
@@ -73,11 +78,11 @@ def get_conditions_cash_accounting(filters):
 	conditions = ""
 	conditions_payment_entry = ""
 
-	if (filters.company):
+	if filters.company:
 		conditions += " and tabAccount.company = %(company)s"
 		conditions_payment_entry += " and tabAccount.company = %(company)s"
 
-	if (filters.from_date):
+	if filters.from_date:
 		conditions += " and `tabJournal Entry`.posting_date between %(from_date)s and %(to_date)s"
 		conditions_payment_entry += """ and `tabPayment Entry`.reference_date between %(from_date)s and %(to_date)s"""
 
@@ -113,17 +118,17 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 
 		root_type = get_jv_account_type(filters, conditions, n.account_head)
 		position_root_type = 0
-		if (filters.accounting == "Accrual Accounting"):
+		if filters.accounting == "Accrual Accounting":
 			gst_tax = get_tax_total_accrual_accounting(filters, conditions, n.account_head, "")
 			total_invoices = get_tax_total_accrual_accounting(filters, conditions, n.account_head, "update_values")
-		else:  # Cahs Accounting
+		else:  # Cash Accounting
 			gst_tax = get_tax_total_cash_accounting(filters, conditions, n.account_head, conditions_payment_entry, "")
 			total_invoices = get_tax_total_cash_accounting(filters, conditions, n.account_head, conditions_payment_entry, "update_values")
 
 		for d, t in zip(gst_tax, total_invoices):
 
 			# get root_type for jv
-			if ("JV-" in d.voucher_no):
+			if "JV-" in d.voucher_no:
 				if root_type[position_root_type] == "Expense":
 					t.purchase_value = t.sales_value
 					t.sales_value = 0.0
@@ -131,12 +136,8 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 					d.tax_collected = 0.0
 				position_root_type += 1
 
-			# # don't show negative values
-			# if not (d.tax_collected >= 0.0 and d.tax_paid >= 0.0):
-			# 	continue
-
 			# 0% tax account is 0% tax
-			if (n.rate == 0.0):
+			if n.rate == 0.0:
 				d.tax_collected = 0.0
 				d.tax_paid = 0.0
 
@@ -196,7 +197,6 @@ def get_columns():
 			"fieldname": "rate",
 			"label": _("Rate"),
 			"fieldtype": "Data",
-			"options": "Account",
 			"width": 300
 		},
 		{
@@ -348,7 +348,7 @@ def get_tax_total_accrual_accounting(filters, conditions, account_head, update_t
 					"account_head": account_head
 				}, as_dict=True)
 
-def get_rates_accrual_accounting(filters, conditions, taxes):
+def get_rates_accrual_accounting(filters, conditions, taxes):	
 	return frappe.db.sql("""
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate, tabAccount.name as account_head
 			from `tabGL Entry`
