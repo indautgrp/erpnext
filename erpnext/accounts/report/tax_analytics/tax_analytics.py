@@ -195,7 +195,7 @@ def get_columns():
 		{
 			"fieldname": "rate",
 			"label": _("Rate"),
-			"fieldtype": "Link",
+			"fieldtype": "Data",
 			"options": "Account",
 			"width": 300
 		},
@@ -380,7 +380,7 @@ def get_rates_accrual_accounting(filters, conditions, taxes):
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
-            order by rate asc
+			order by rate asc
 			""".format(taxes=taxes, conditions=conditions),
 				{
 					"company": filters.company,
@@ -566,7 +566,7 @@ def get_rates_cash_accounting(filters, conditions, conditions_payment_entry, tax
 				{taxes}
 				{conditions}
 				group by node_rate, account_head
-	            order by rate asc
+				order by rate asc
 				""".format(taxes=taxes,
 						   conditions=conditions,
 						   conditions_payment_entry=conditions_payment_entry),
