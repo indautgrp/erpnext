@@ -229,9 +229,11 @@ class EmailDigest(Document):
 
 		cache = frappe.cache()
 		context.cards = []
-		for key in ("income", "expenses_booked", "income_year_to_date","expense_year_to_date",
-			 "new_quotations","pending_quotations","sales_order","purchase_order","pending_sales_orders","pending_purchase_orders",
-			"invoiced_amount", "payables", "bank_balance", "credit_balance"):
+
+		for key in ("income", "expenses_booked", "income_year_to_date",  "expense_year_to_date", "bank_balance", "credit_balance",
+		"invoiced_amount", "payables", "sales_unbilled", "purchase_unbilled", "sales_order", "purchase_order",
+		"sales_undelivered", "purchase_orders_unreceived", "new_quotations", "pending_quotations"):
+
 			if self.get(key):
 				cache_key = "email_digest:card:{0}:{1}:{2}".format(self.company, self.frequency, key)
 				card = cache.get(cache_key)
@@ -258,16 +260,16 @@ class EmailDigest(Document):
 
 
 					if card.billed_value:
-						card.billed = int(flt(card.billed_value) / card.value * 100)
-						card.billed = "% Billed " + str(card.billed)
+						billed_percent = int(flt(card.billed_value) / card.value * 100)
+						card.billed = "% Billed " + str(billed_percent)
 
 					if card.delivered_value:
-						card.delivered = int(flt(card.delivered_value) / card.value * 100)
+						card.delivered_percent = int(flt(card.delivered_value) / card.value * 100)
 						if key == "pending_sales_orders":
-							card.delivered = "% Delivered " + str(card.delivered)
+							card.delivered = "% Delivered " + str(card.delivered_percent)
 						else:
-							card.delivered = "% Received " + str(card.delivered)
-						
+							card.delivered = "% Received " + str(card.delivered_percent)
+
 					if key =="credit_balance":
 						card.value = card.value *-1
 					card.value = self.fmt_money(card.value,False if key in ("bank_balance", "credit_balance") else True)
@@ -350,6 +352,71 @@ class EmailDigest(Document):
 
 		return balance, past_balance, count
 
+	def get_sales_unbilled(self):
+		"""Get value not billed"""
+		data = self.get_pending_sales_orders()
+		sales_unbilled = flt((data['value'] - data['billed_value']))
+		unbilled_percent = str(int(flt(sales_unbilled / data['value'] * 100)))
+		count = frappe.db.sql("""select count(*) from `tabSales Order`
+			where billing_status = "Not Billed"
+			and status not in ('Closed','Cancelled', 'Completed') """)[0][0]
+
+		return {
+			"label": self.meta.get_label("sales_unbilled"), 
+			"value": sales_unbilled,
+			"percent": unbilled_percent, 
+			"count": count
+		}
+
+	def get_sales_undelivered(self):
+		"""Get value not delivered"""
+		data = self.get_pending_sales_orders()
+		sales_undelivered = flt((data['value'] - data['delivered_value']))
+		undelivered_percent = str(int(flt(sales_undelivered / data['value'] * 100)))
+		count = frappe.db.sql("""select count(*) from `tabSales Order`
+			where delivery_status in ("Partly Delivered", "Not Delivered")
+			and status not in ('Closed','Cancelled', 'Completed') """)[0][0]
+
+		return {
+			"label": self.meta.get_label("sales_undelivered"), 
+			"value": sales_undelivered,
+			"percent": undelivered_percent,
+			"count": count
+		}
+
+	def get_purchase_orders_unreceived(self):
+		"""Get value not received"""
+		data = self.get_pending_purchase_orders()
+		purchase_orders_unreceived = flt((data['value'] - data['delivered_value']))
+		unreceived_percent = str(int(flt(purchase_orders_unreceived / data['value'] * 100)))
+		count = frappe.db.sql("""select count(*) from `tabPurchase Order`
+			where per_received != 100
+			and status not in ('Closed','Cancelled', 'Completed') """)[0][0]
+
+		return {
+			"label": self.meta.get_label("purchase_orders_unreceived"), 
+			"value": purchase_orders_unreceived,
+			"percent": unreceived_percent,
+			"count": count
+
+		}
+
+	def get_purchase_unbilled(self):
+		"""Get purchase not billed"""
+		data = self.get_pending_purchase_orders()
+		purchase_unbilled = flt((data['value'] - data['billed_value']))
+		unbilled_percent = str(int(flt(purchase_unbilled / data['value'] * 100)))
+		count = frappe.db.sql("""select count(*) from `tabPurchase Order`
+			where per_billed != 100
+			and status not in ('Closed','Cancelled', 'Completed') """)[0][0]
+
+		return {
+			"label": self.meta.get_label("purchase_unbilled"), 
+			"value": purchase_unbilled,
+			"percent": unbilled_percent,
+			"count": count
+		}
+
 	def get_type_balance(self, fieldname, account_type, root_type=None):
 		
 		if root_type:
@@ -423,10 +490,10 @@ class EmailDigest(Document):
 		
 		return {
 			"label": self.meta.get_label(fieldname),
-            		"value": value,
+            "value": value,
 			"billed_value": billed_value,
 			"delivered_value": delivered_value,
-            		"count": count
+            "count": count
 		}
 	
 	def get_summary_of_pending_quotations(self, fieldname):
@@ -441,9 +508,9 @@ class EmailDigest(Document):
 		
 		return {
 			"label": self.meta.get_label(fieldname),
-            		"value": value,
+            "value": value,
 			"last_value": last_value,
-            		"count": count
+            "count": count
 		}
 
 	def get_summary_of_doc(self, doc_type, fieldname):
@@ -455,8 +522,8 @@ class EmailDigest(Document):
 
 		return {
 			"label": self.meta.get_label(fieldname),
-            		"value": value,
-            		"last_value": last_value,
+            "value": value,
+            "last_value": last_value,
 			"count": count
 		}
 	
