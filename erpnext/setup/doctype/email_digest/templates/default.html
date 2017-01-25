@@ -1,10 +1,13 @@
 {% macro show_card(card) %}
-<div style="width: 50%; float:left; min-height: 80px; padding-top: 20px;">
+<div style="width: 49%; display:inline-block; vertical-align: top; min-height: 80px; padding-top: 20px;">
     <h6 style="color: {{ text_muted }}; font-size: 12px; margin-bottom: 0px; margin-top: 0px;">{{ card.label }}
     {% if card.count %}
     <span class="badge">({{ card.count }})</span>
     {% endif %}</h6>
-    <h4 style="margin-top: 7px; font-size: 16px; margin-botom: 5px;">{{ card.value }}</h4>
+	<h4 style="margin-top: 7px; font-size: 16px; margin-botom: 5px;">{{ card.value }} 
+	{% if card.percent %}
+	<span class="badge">({{ card.percent }}%)</span>
+	{% endif %}</h4>
     {% if card.diff %}
     <p style="color: {{ text_muted }}; font-size: 12px; margin-top: 0px;">{{ card.diff }}%</p>
     {% endif %}
