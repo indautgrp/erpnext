@@ -191,6 +191,12 @@ def get_data():
 					"doctype": "Purchase Invoice",
 					"is_query_report": True
 				},
+				{
+					"type": "report",
+					"is_query_report": True,
+					"name": "Tax Analytics",
+					"doctype": "Account"
+				},
 			]
 		},
 		{
