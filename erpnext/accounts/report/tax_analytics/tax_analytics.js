@@ -42,7 +42,7 @@ frappe.query_reports["Tax Analytics"] = {
 			value = $value.wrap("<p></p>").parent().html();
 		}
 		
-		if ((dataContext.tax_collected < 0.0 || dataContext.tax_paid < 0.0 ) && columnDef.fieldtype != "Date") {
+		if ((dataContext.sales_value < 0.0 || dataContext.purchase_value < 0.0) && columnDef.fieldtype != "Date") {
 			var $value = $(value).css("color", "red");
 			value = $value.wrap("<p></p>").parent().html();
 		}

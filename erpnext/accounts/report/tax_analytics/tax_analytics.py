@@ -95,6 +95,10 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 	total_tax_collected = 0.0
 	total_tax_paid = 0.0
 
+	# to create a list of invoices and to show invoice's values splitted when it have more than 1 entry showing in the grid 
+	split_invoices = []
+	multi_invoice = {}
+
 	for n in nodes:
 		tax_collected_node = 0.0
 		tax_paid_node = 0.0
@@ -103,6 +107,8 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 		indent = 0
 		row_node = {
 			"date": None,
+			"account_name": n.account_name,
+			"total_taxes_and_charges": None,
 			"rate": n.node_rate,
 			"sales_value": None,
 			"purchase_value": None,
@@ -127,6 +133,10 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 			total_invoices = get_tax_total_cash_accounting(
 				filters, conditions, n.account_head, conditions_payment_entry, "update_values")
 
+		# get a list of all rows in the grid
+		for c in gst_tax:
+			split_invoices.append(c.voucher_no)
+
 		for d, t in zip(gst_tax, total_invoices):
 
 			# get root_type for jv
@@ -138,13 +148,10 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 					d.tax_collected = 0.0
 				position_root_type += 1
 
-			# 0% tax account is 0% tax
-			if n.rate == 0.0:
-				d.tax_collected = 0.0
-				d.tax_paid = 0.0
-
 			row = {
 				"date": d.posting_date,
+				"account_name": d.account_name,
+				"total_taxes_and_charges": d.total_taxes_and_charges,
 				"rate": d.voucher_no,
 				"sales_value": t.sales_value,
 				"purchase_value": t.purchase_value,
@@ -165,6 +172,8 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 		# update total in each node line
 		data[position_node - 1] = {
 			"date": None,
+			"account_name": n.account_name,
+			"total_taxes_and_charges": n.total_taxes_and_charges,
 			"tax_collected": tax_collected_node,
 			"tax_paid": tax_paid_node,
 			"sales_value": grand_total_sale_node,
@@ -183,6 +192,8 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 	indent = 0
 	row_total = {
 		"date": None,
+		"account_name": None,
+		"total_taxes_and_charges": None,
 		"rate": "Grand Total",
 		"sales_value": grand_total_sale,
 		"purchase_value": grand_total_purchase,
@@ -193,6 +204,51 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 	}
 
 	data.append(row_total)
+
+	# count how many times each invoice is shown
+	for i in split_invoices:
+		if i in multi_invoice:
+			multi_invoice[i] += 1
+		else:
+			multi_invoice[i] = 1
+
+	# update sales/purchase value with value splitted
+	for d in data:
+		for m in multi_invoice:
+			if d["rate"] == m and multi_invoice[m] > 1:
+				if d["total_taxes_and_charges"] == 0.0:
+					d["purchase_value"] = 0.0
+					d["sales_value"] = 0.0
+				else:
+					d["purchase_value"] = d["purchase_value"] * round(d["tax_paid"] / d["total_taxes_and_charges"], 2)
+					d["sales_value"] = d["sales_value"] * round(d["tax_collected"] / d["total_taxes_and_charges"], 2)
+				data[data.count(d) - 1]["purchase_value"] = d["purchase_value"]
+				data[data.count(d) - 1]["sales_value"] = d["sales_value"]
+
+	p = 0
+	pos_node = 0
+	pv_gt = 0.0
+	sv_gt = 0.0
+	update_node_pv = 0.0
+	update_node_sv = 0.0
+
+	# update node totals according to the new values
+	for d in data:
+		if d["indent"] == 0:
+			pv_gt += update_node_pv
+			sv_gt += update_node_sv
+			update_node_pv = 0.0
+			update_node_sv = 0.0
+			pos_node = p
+		else:
+			update_node_pv += d["purchase_value"]
+			data[pos_node]["purchase_value"] = update_node_pv
+			update_node_sv += d["sales_value"]
+			data[pos_node]["sales_value"] = update_node_sv
+		p += 1
+
+	data[pos_node]["purchase_value"] = pv_gt
+	data[pos_node]["sales_value"] = sv_gt
 
 	return data
 
@@ -310,11 +366,12 @@ def invoices_rates_with_no_gl_entries_accrual_accounting(conditions, taxes):
 
 	inv = """UNION
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabSales Invoice`
 			left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabSales Invoice`.name
 			left join tabAccount on tabAccount.name = `tabSales Taxes and Charges`.account_head
-			where `tabSales Invoice`.base_discount_amount =  (tax_amount + `tabSales Invoice`.total)
+			where `tabSales Invoice`.base_discount_amount = (tax_amount + `tabSales Invoice`.total)
+			and `tabSales Invoice`.docstatus = 1
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
@@ -326,17 +383,18 @@ def get_tax_total_accrual_accounting(filters, conditions, account_head, update_t
 	""" to get the amounts of Accrual Accounting for some account """
 	if update_total == "":
 		sales_fields = """concat(voucher_no, ': ', title) as voucher_no, (tax_amount_after_discount_amount) as tax_collected,
-			0.0 as tax_paid, `tabGL Entry`.posting_date"""
+			0.0 as tax_paid, `tabGL Entry`.posting_date, account_name, total_taxes_and_charges"""
 		purchase_fields = """concat(voucher_no, ': ', title) as voucher_no, 0.0 as tax_collected,
-			sum(tax_amount_after_discount_amount) as tax_paid, `tabGL Entry`.posting_date"""
+			sum(tax_amount_after_discount_amount) as tax_paid, `tabGL Entry`.posting_date, account_name, total_taxes_and_charges"""
 		jv_fields = """concat(voucher_no, ': ', title) as voucher_no,
 			if(`tabGL Entry`.credit_in_account_currency > 0.0, `tabGL Entry`.credit_in_account_currency,
 			`tabGL Entry`.debit_in_account_currency) as tax_collected,
-			0.0 as tax_paid, `tabJournal Entry`.posting_date"""
+			0.0 as tax_paid, `tabJournal Entry`.posting_date, account_name, 0.0 as total_taxes_and_charges"""
 		sales_cond = "and root_type = 'Income'"
 		purchase_cond = "and tabAccount.account_name = 'Creditors'"
 		si_pi_with_no_gl_entries = """concat(`tabSales Invoice`.name, ': ', title) as voucher_no,
-			(tax_amount_after_discount_amount) as tax_collected, 0.0 as tax_paid, posting_date"""
+			(tax_amount_after_discount_amount) as tax_collected, 0.0 as tax_paid, posting_date, account_name,
+			total_taxes_and_charges"""
 		jv = """select {jv_fields}
 				from `tabGL Entry`
 				left join tabAccount on tabAccount.name = `tabGL Entry`.account
@@ -347,21 +405,25 @@ def get_tax_total_accrual_accounting(filters, conditions, account_head, update_t
 				and `tabJournal Entry`.docstatus = 1
 				and exists(select credit
 					from `tabJournal Entry Account`
-					left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type
-					where `tabJournal Entry Account`.parent = voucher_no and root_type in ('Expense', 'Income'))
+					left join tabAccount on tabAccount.name = `tabJournal Entry Account`.account
+					where `tabJournal Entry Account`.parent = voucher_no
+					and root_type in ('Expense', 'Income'))
 				{conditions}
 				group by voucher_no
 				""".format(jv_fields=jv_fields,conditions=conditions)
 	else:
-		sales_fields = "base_grand_total as sales_value, 0.0 as purchase_value, voucher_no, `tabGL Entry`.posting_date"
-		purchase_fields = "0.0 as sales_value, base_grand_total as purchase_value, voucher_no, `tabGL Entry`.posting_date"
+		sales_fields = """base_grand_total as sales_value, 0.0 as purchase_value, voucher_no, `tabGL Entry`.posting_date,
+			account_name, total_taxes_and_charges"""
+		purchase_fields = """0.0 as sales_value, base_grand_total as purchase_value, voucher_no, `tabGL Entry`.posting_date,
+			account_name, total_taxes_and_charges"""
 		jv_fields = """if(`tabJournal Entry Account`.debit_in_account_currency > 0.0,
 			sum(`tabJournal Entry Account`.debit_in_account_currency), 0.0) as sales_value,
-			0.0 as purchase_value, `tabJournal Entry Account`.parent as voucher_no, `tabJournal Entry`.posting_date"""
+			0.0 as purchase_value, `tabJournal Entry Account`.parent as voucher_no, `tabJournal Entry`.posting_date, account_name,
+			0.0 as total_taxes_and_charges"""
 		sales_cond = ""
 		purchase_cond = ""
 		si_pi_with_no_gl_entries = """base_grand_total as sales_value, 0.0 as purchase_value,
-			`tabSales Invoice`.name as voucher_no, posting_date"""
+			`tabSales Invoice`.name as voucher_no, posting_date, account_name, total_taxes_and_charges"""
 		jv = """select {jv_fields}
 				from `tabJournal Entry Account`
 			    left join tabAccount ON tabAccount.name = `tabJournal Entry Account`.account
@@ -378,8 +440,9 @@ def get_tax_total_accrual_accounting(filters, conditions, account_head, update_t
 					and `tabJournal Entry`.docstatus = 1
 					and exists(select credit
 						from `tabJournal Entry Account`
-						left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type
-						where `tabJournal Entry Account`.parent = voucher_no and root_type in ('Expense', 'Income'))
+						left join tabAccount on tabAccount.name = `tabJournal Entry Account`.account
+						where `tabJournal Entry Account`.parent = voucher_no
+						and root_type in ('Expense', 'Income'))
 					{conditions}
 					group by voucher_no)
 				group by voucher_no
@@ -443,35 +506,39 @@ def get_rates_accrual_accounting(filters, conditions, taxes):
 	# Sales/Purchase Invoices that don't have gl entries
 	return frappe.db.sql("""
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabGL Entry`
 			left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabSales Taxes and Charges`.account_head
 			where `tabGL Entry`.voucher_type in ('Sales Invoice')
+			and `tabGL Entry`.docstatus = 1
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
 			UNION
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabGL Entry`
 			left join `tabPurchase Taxes and Charges` on `tabPurchase Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabPurchase Taxes and Charges`.account_head
 			where `tabGL Entry`.voucher_type in ('Purchase Invoice')
+			and `tabGL Entry`.docstatus = 1
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
 			UNION
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabGL Entry`
 			left join tabAccount on tabAccount.name = `tabGL Entry`.account
 			left join `tabJournal Entry Account` on `tabJournal Entry Account`.parent = `tabGL Entry`.voucher_no
 			where `tabGL Entry`.voucher_type in ('Journal Entry', 'Payment Entry')
+			and `tabGL Entry`.docstatus = 1
 			and exists(select root_type
 				 from `tabJournal Entry Account`
 				 left join tabAccount on tabAccount.name = `tabJournal Entry Account`.account
-				 where root_type in ('Expense', 'Income'))
+				 where `tabJournal Entry Account`.parent = voucher_no
+				 and root_type in ('Expense', 'Income'))
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
@@ -530,13 +597,14 @@ def invoices_rates_with_no_gl_entries_cash_accounting(conditions, conditions_pay
 
 	inv = """UNION
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabSales Invoice`
 			left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabSales Invoice`.name
 			left join tabAccount on tabAccount.name = `tabSales Taxes and Charges`.account_head
 			left join `tabJournal Entry Account` on `tabJournal Entry Account`.reference_name = `tabSales Invoice`.name
 			left join `tabJournal Entry` on `tabJournal Entry`.name = `tabJournal Entry Account`.parent
 			where `tabSales Invoice`.base_discount_amount =  (tax_amount + `tabSales Invoice`.total)
+			and `tabSales Invoice`.docstatus = 1
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
@@ -544,13 +612,14 @@ def invoices_rates_with_no_gl_entries_cash_accounting(conditions, conditions_pay
 
 	inv_new_pay = """UNION
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabSales Invoice`
 			left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabSales Invoice`.name
 			left join tabAccount on tabAccount.name = `tabSales Taxes and Charges`.account_head
 			left join `tabPayment Entry Reference` on `tabPayment Entry Reference`.reference_name = `tabSales Invoice`.name
 			left join `tabPayment Entry` on `tabPayment Entry`.name = `tabPayment Entry Reference`.parent
 			where `tabSales Invoice`.base_discount_amount =  (tax_amount + `tabSales Invoice`.total)
+			and `tabSales Invoice`.docstatus = 1
 			{taxes}
 			{conditions_payment_entry}
 		    group by node_rate, account_head
@@ -563,23 +632,26 @@ def get_tax_total_cash_accounting(filters, conditions, account_head, conditions_
 	if update_total == "":
 		sales_fields = """concat(voucher_no, ': ', `tabSales Invoice`.title) as voucher_no,
             (`tabJournal Entry Account`.credit_in_account_currency / `tabSales Invoice`.base_grand_total)
-            * tax_amount_after_discount_amount as tax_collected, 0.0 as tax_paid, `tabJournal Entry`.posting_date"""
+            * tax_amount_after_discount_amount as tax_collected, 0.0 as tax_paid, `tabJournal Entry`.posting_date, account_name,
+            total_taxes_and_charges"""
 		sales_fields_new_payment = """concat(voucher_no, ': ', `tabSales Invoice`.title) as voucher_no,
 			(allocated_amount  / `tabSales Invoice`.base_grand_total) *	tax_amount_after_discount_amount as tax_collected,
-			0.0 as tax_paid, `tabPayment Entry`.posting_date"""
+			0.0 as tax_paid, `tabPayment Entry`.posting_date, account_name, total_taxes_and_charges"""
 		purchase_fields = """concat(voucher_no, ': ', `tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected,
 			(`tabJournal Entry Account`.debit_in_account_currency / `tabPurchase Invoice`.base_grand_total)
-			* tax_amount_after_discount_amount as tax_paid, `tabJournal Entry`.posting_date"""
+			* tax_amount_after_discount_amount as tax_paid, `tabJournal Entry`.posting_date, account_name,
+			total_taxes_and_charges"""
 		purchase_fields_new_payment = """concat(voucher_no, ': ', `tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected,
 			(allocated_amount / `tabPurchase Invoice`.base_grand_total) * tax_amount_after_discount_amount as tax_paid,
-			`tabPayment Entry`.posting_date"""
+			`tabPayment Entry`.posting_date, account_name, total_taxes_and_charges"""
 		jv_fields = """concat(voucher_no, ': ', title) as voucher_no, if(`tabGL Entry`.credit_in_account_currency > 0.0,
 			`tabGL Entry`.credit_in_account_currency, `tabGL Entry`.debit_in_account_currency) as tax_collected,
-			0.0 as tax_paid, `tabJournal Entry`.posting_date"""
+			0.0 as tax_paid, `tabJournal Entry`.posting_date, account_name, 0.0 as total_taxes_and_charges"""
 		sales_cond = "and root_type = 'Income'"
 		purchase_cond = "and tabAccount.account_name = 'Creditors'"
 		si_pi_with_no_gl_entries = """concat(`tabSales Invoice`.name, ': ', `tabSales Invoice`.title) as voucher_no,
-			(tax_amount_after_discount_amount) as tax_collected, 0.0 as tax_paid, `tabSales Invoice`.posting_date"""
+			(tax_amount_after_discount_amount) as tax_collected, 0.0 as tax_paid, `tabSales Invoice`.posting_date, account_name,
+			total_taxes_and_charges"""
 		jv = """select {jv_fields}
 			from `tabGL Entry`
 			left join tabAccount on tabAccount.name = `tabGL Entry`.account
@@ -590,27 +662,28 @@ def get_tax_total_cash_accounting(filters, conditions, account_head, conditions_
 			and `tabJournal Entry`.docstatus = 1
 			and exists(select credit
 				from `tabJournal Entry Account`
-				left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type
+				left join tabAccount on tabAccount.name = `tabJournal Entry Account`.account
 				where `tabJournal Entry Account`.parent = voucher_no and root_type in ('Expense', 'Income'))
 			{conditions}
 			group by voucher_no
 			""".format(jv_fields=jv_fields,conditions=conditions)
 	else:
 		sales_fields = """`tabJournal Entry Account`.credit_in_account_currency as sales_value, 0.0 as purchase_value, voucher_no,
-			`tabJournal Entry`.posting_date"""
+			`tabJournal Entry`.posting_date, account_name, total_taxes_and_charges"""
 		sales_fields_new_payment = """allocated_amount as sales_value, 0.0 as purchase_value, voucher_no,
-			`tabPayment Entry`.posting_date"""
+			`tabPayment Entry`.posting_date, account_name, total_taxes_and_charges"""
 		purchase_fields = """0.0 as sales_value, `tabJournal Entry Account`.debit_in_account_currency as purchase_value, voucher_no,
-			`tabJournal Entry`.posting_date"""
+			`tabJournal Entry`.posting_date, account_name, total_taxes_and_charges"""
 		purchase_fields_new_payment = """0.0 as sales_value, allocated_amount as purchase_value, voucher_no,
-			`tabPayment Entry`.posting_date"""
+			`tabPayment Entry`.posting_date, account_name, total_taxes_and_charges"""
 		jv_fields = """if(`tabJournal Entry Account`.debit_in_account_currency > 0.0,
 			sum(`tabJournal Entry Account`.debit_in_account_currency), 0.0) as sales_value,
-			0.0 as purchase_value, `tabJournal Entry Account`.parent as voucher_no, `tabJournal Entry`.posting_date"""
+			0.0 as purchase_value, `tabJournal Entry Account`.parent as voucher_no, `tabJournal Entry`.posting_date, account_name,
+			0.0 as total_taxes_and_charges"""
 		sales_cond = ""
 		purchase_cond = ""
 		si_pi_with_no_gl_entries = """base_grand_total as sales_value, 0.0 as purchase_value, `tabSales Invoice`.name as voucher_no,
-			`tabSales Invoice`.posting_date"""
+			`tabSales Invoice`.posting_date, account_name, total_taxes_and_charges"""
 		jv = """select {jv_fields}
 			from `tabJournal Entry Account`
 		    left join tabAccount ON tabAccount.name = `tabJournal Entry Account`.account
@@ -627,7 +700,7 @@ def get_tax_total_cash_accounting(filters, conditions, account_head, conditions_
 				and `tabJournal Entry`.docstatus = 1
 				and exists(select credit
 					from `tabJournal Entry Account`
-					left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type
+					left join tabAccount on tabAccount.name = `tabJournal Entry Account`.account
 					where `tabJournal Entry Account`.parent = voucher_no and root_type in ('Expense', 'Income'))
 				{conditions}
 				group by voucher_no)
@@ -747,55 +820,59 @@ def get_rates_cash_accounting(filters, conditions, conditions_payment_entry, tax
 	# Sales/Purchase Invoices that don't have gl entries
 	return frappe.db.sql("""
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabGL Entry`
 			left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabSales Taxes and Charges`.account_head
 			left join `tabJournal Entry Account` on `tabJournal Entry Account`.reference_name = voucher_no
 			left join `tabJournal Entry` on `tabJournal Entry`.name = `tabJournal Entry Account`.parent
 			where `tabGL Entry`.voucher_type in ('Sales Invoice')
+			and `tabGL Entry`.docstatus = 1
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
 			UNION
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabGL Entry`
 			left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabSales Taxes and Charges`.account_head
 			left join `tabPayment Entry Reference` on `tabPayment Entry Reference`.reference_name = voucher_no
 			left join `tabPayment Entry` on `tabPayment Entry`.name = `tabPayment Entry Reference`.parent
 			where `tabGL Entry`.voucher_type in ('Sales Invoice')
+			and `tabGL Entry`.docstatus = 1
 			{taxes}
 			{conditions_payment_entry}
 			group by node_rate, account_head
 			UNION 
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabGL Entry`
 			left join `tabPurchase Taxes and Charges` on `tabPurchase Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabPurchase Taxes and Charges`.account_head
 			left join `tabJournal Entry Account` on `tabJournal Entry Account`.reference_name = voucher_no
 			left join `tabJournal Entry` on `tabJournal Entry`.name = `tabJournal Entry Account`.parent
 			where `tabGL Entry`.voucher_type in ('Purchase Invoice')
+			and `tabGL Entry`.docstatus = 1
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
 			UNION
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabGL Entry`
 			left join `tabPurchase Taxes and Charges` on `tabPurchase Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabPurchase Taxes and Charges`.account_head
 			left join `tabPayment Entry Reference` on `tabPayment Entry Reference`.reference_name = voucher_no
 			left join `tabPayment Entry` on `tabPayment Entry`.name = `tabPayment Entry Reference`.parent
 			where `tabGL Entry`.voucher_type in ('Purchase Invoice')
+			and `tabGL Entry`.docstatus = 1
 			{taxes}
 			{conditions_payment_entry}
 			group by node_rate, account_head
 			UNION
 			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
-				tabAccount.name as account_head
+				tabAccount.name as account_head, account_name
 			from `tabGL Entry`
 			left join tabAccount on tabAccount.name = `tabGL Entry`.account
 			left join `tabJournal Entry` on `tabJournal Entry`.name = `tabGL Entry`.voucher_no
@@ -804,7 +881,9 @@ def get_rates_cash_accounting(filters, conditions, conditions_payment_entry, tax
 			and exists(select root_type
 				from `tabJournal Entry Account`
 				left join tabAccount on tabAccount.name = `tabJournal Entry Account`.account
-				where root_type in ('Expense', 'Income'))
+				where `tabJournal Entry Account`.parent = voucher_no
+				and root_type in ('Expense', 'Income'))
+			and `tabGL Entry`.docstatus = 1
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
