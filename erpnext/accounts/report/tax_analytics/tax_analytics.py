@@ -227,16 +227,16 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 
 	position_next_node_rate = 0
 	position_node_rate = 0
-	pv_gt = 0.0
-	sv_gt = 0.0
+	purchase_value_grand_total = 0.0
+	sales_value_grand_total = 0.0
 	update_node_pv = 0.0
 	update_node_sv = 0.0
 
 	# update node totals according to the new values
 	for d in data:
 		if d["indent"] == 0:
-			pv_gt += update_node_pv
-			sv_gt += update_node_sv
+			purchase_value_grand_total += update_node_pv
+			sales_value_grand_total += update_node_sv
 			update_node_pv = 0.0
 			update_node_sv = 0.0
 			position_node_rate = position_next_node_rate
@@ -247,8 +247,8 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 			data[position_node_rate]["sales_value"] = update_node_sv
 		position_next_node_rate += 1
 
-	data[position_node_rate]["purchase_value"] = pv_gt
-	data[position_node_rate]["sales_value"] = sv_gt
+	data[position_node_rate]["purchase_value"] = purchase_value_grand_total
+	data[position_node_rate]["sales_value"] = sales_value_grand_total
 
 	return data
 
