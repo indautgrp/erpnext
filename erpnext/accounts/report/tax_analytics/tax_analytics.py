@@ -126,18 +126,18 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 		root_type = get_jv_account_type(filters, conditions, n.account_head)
 		position_root_type = 0
 		if filters.accounting == "Accrual Accounting":
-			gst_tax = get_tax_total_accrual_accounting(filters, conditions, n.account_head, "")
+			value_added_tax = get_tax_total_accrual_accounting(filters, conditions, n.account_head, "")
 			total_invoices = get_tax_total_accrual_accounting(filters, conditions, n.account_head, "update_values")
 		else:  # Cash Accounting
-			gst_tax = get_tax_total_cash_accounting(filters, conditions, n.account_head, conditions_payment_entry, "")
+			value_added_tax = get_tax_total_cash_accounting(filters, conditions, n.account_head, conditions_payment_entry, "")
 			total_invoices = get_tax_total_cash_accounting(
 				filters, conditions, n.account_head, conditions_payment_entry, "update_values")
 
 		# get a list of all rows in the grid
-		for c in gst_tax:
+		for c in value_added_tax:
 			split_invoices.append(c.voucher_no)
 
-		for d, t in zip(gst_tax, total_invoices):
+		for d, t in zip(value_added_tax, total_invoices):
 
 			# get root_type for jv
 			if "JV-" in d.voucher_no:
@@ -225,8 +225,8 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 				data[data.count(d) - 1]["purchase_value"] = d["purchase_value"]
 				data[data.count(d) - 1]["sales_value"] = d["sales_value"]
 
-	p = 0
-	pos_node = 0
+	position_next_node_rate = 0
+	position_node_rate = 0
 	pv_gt = 0.0
 	sv_gt = 0.0
 	update_node_pv = 0.0
@@ -239,16 +239,16 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry):
 			sv_gt += update_node_sv
 			update_node_pv = 0.0
 			update_node_sv = 0.0
-			pos_node = p
+			position_node_rate = position_next_node_rate
 		else:
 			update_node_pv += d["purchase_value"]
-			data[pos_node]["purchase_value"] = update_node_pv
+			data[position_node_rate]["purchase_value"] = update_node_pv
 			update_node_sv += d["sales_value"]
-			data[pos_node]["sales_value"] = update_node_sv
-		p += 1
+			data[position_node_rate]["sales_value"] = update_node_sv
+		position_next_node_rate += 1
 
-	data[pos_node]["purchase_value"] = pv_gt
-	data[pos_node]["sales_value"] = sv_gt
+	data[position_node_rate]["purchase_value"] = pv_gt
+	data[position_node_rate]["sales_value"] = sv_gt
 
 	return data
 
