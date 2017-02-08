@@ -6,7 +6,9 @@ def execute():
 	create_gst_accounts()
 	update_fields_account_imports()
 	update_fields_account_exports()
-	udate_fields_jv_capital_on_acquisitions()
+	update_fields_jv_capital_on_acquisitions()
+	update_fields_gst_adjustments_pi()
+	update_fields_gst_adjustments_si()
 
 def create_gst_accounts():
 	if not frappe.db.exists('Account', {'account_name': 'GST Adjustments'}):
@@ -74,7 +76,7 @@ def update_fields_account_exports():
 				  and voucher_no in {customers_invoices}""".format(customers_invoices=customers_invoices),{}, as_dict=True)
 
 # GST on Capital Acquisitions
-def udate_fields_jv_capital_on_acquisitions():
+def update_fields_jv_capital_on_acquisitions():
 	for d in frappe.db.sql("select parent from `tabJournal Entry Account` where account = 'Motor Vehicles GST paid - IAG'"):
 		frappe.db.sql("update `tabJournal Entry Account` "
 					  "set account = 'GST on Capital Acquisitions - IAG' "
@@ -85,3 +87,96 @@ def udate_fields_jv_capital_on_acquisitions():
 					  "set account = 'GST on Capital Acquisitions - IAG' "
 					  "where account = 'GST Paid - IAG' "
 					  "and voucher_no = %s", d[0])
+
+# GST Adjustments - Purchase Invoice
+def update_fields_gst_adjustments_pi():
+	ptc = ""
+	for p in frappe.db.sql("""select name from `tabPurchase Taxes and Charges`
+								where description like '%Adjustment%'
+								and parent like 'PINV-%'"""):
+		ptc += "'" + p[0] + "',"
+
+	if ptc != "":
+		ptc = " name in (" + ptc[:len(ptc) - 1] + ")"
+
+	gle = ""
+	for g in frappe.db.sql("""select name from `tabGL Entry`
+						where voucher_no in (
+							select parent from `tabPurchase Taxes and Charges`
+							where description like '%Adjustment%'
+							and parent like 'PINV-%')
+						and `tabGL Entry`.account = 'GST Paid - IAG'
+						and (debit_in_account_currency = 0.0 and credit_in_account_currency > -1.0 and `tabGL Entry`.credit_in_account_currency < 1.0)
+						UNION
+						select name from `tabGL Entry`
+						where voucher_no in (
+							select parent from `tabPurchase Taxes and Charges`
+							where description like '%Adjustment%'
+							and parent like 'PINV-%')
+						and `tabGL Entry`.account = 'GST Paid - IAG'
+						and `tabGL Entry`.voucher_no not in (
+							select voucher_no from `tabGL Entry`
+							where voucher_no in (
+								select parent from `tabPurchase Taxes and Charges`
+								where description like '%Adjustment%'
+								and parent like 'PINV-%'
+							)
+							and `tabGL Entry`.account = 'GST Paid - IAG'
+							and (debit_in_account_currency = 0.0 and credit_in_account_currency > -1.0 and `tabGL Entry`.credit_in_account_currency < 1.0))"""):
+		gle += "'" + g[0] + "',"
+
+	if gle != "":
+		gle = " name in (" + gle[:len(gle) - 1] + ")"
+	
+	frappe.db.sql("""update `tabGL Entry`
+					set account = 'GST Adjustments - IAG'
+					where {gle}""".format(gle=gle), {}, as_dict=True)
+
+	frappe.db.sql("""update `tabPurchase Taxes and Charges`
+					set account_head = 'GST Adjustments - IAG'
+					where {ptc}""".format(ptc=ptc), {}, as_dict=True)
+
+# GST Adjustments - Sales Invoice
+def update_fields_gst_adjustments_si():
+	stc = ""
+	for s in frappe.db.sql("""select name from `tabSales Taxes and Charges`
+									where description like '%Adjustment%'
+									and parent like 'SINV-%'"""):
+		stc += "'" + s[0] + "',"
+
+	if stc != "":
+		stc = " name in (" + stc[:len(stc) - 1] + ")"
+
+	gle = ""
+	for g in frappe.db.sql("""select name from `tabGL Entry`
+							where voucher_no in (select parent from `tabSales Taxes and Charges`
+								where description like '%Adjustment%'
+								and parent like 'SINV-%')
+							and `tabGL Entry`.account = 'GST Adjustments'
+							and `tabGL Entry`.debit_in_account_currency > 0.0
+							UNION 
+							select name from `tabGL Entry`
+							where voucher_no in (select parent from `tabSales Taxes and Charges`
+								where description like '%Adjustment%'
+								and parent like 'SINV-%')
+							and `tabGL Entry`.account = 'GST Collected - IAG'
+							and `tabGL Entry`.debit_in_account_currency = 0.0
+							and `tabGL Entry`.voucher_no not in (
+								select voucher_no from `tabGL Entry`
+								where voucher_no in (select parent from `tabSales Taxes and Charges`
+									where description like '%Adjustment%'
+									and parent like 'SINV-%')
+								and `tabGL Entry`.account = 'GST Adjustments'
+								and `tabGL Entry`.debit_in_account_currency > 0.0)"""):
+		gle += "'" + g[0] + "',"
+
+	if gle != "":
+		gle = " name in (" + gle[:len(gle) - 1] + ")"
+
+	frappe.db.sql("""update `tabGL Entry`
+						set account = 'GST Adjustments - IAG'
+						where {gle}""".format(gle=gle), {}, as_dict=True)
+
+	frappe.db.sql("""update `tabSales Taxes and Charges`
+						set account_head = 'GST Adjustments - IAG'
+						where {stc}""".format(stc=stc), {}, as_dict=True)
