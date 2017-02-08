@@ -5,7 +5,7 @@
 
 from __future__ import unicode_literals
 import frappe, json
-from frappe.utils import cstr, flt
+from frappe.utils import cint, cstr, flt
 from erpnext.stock.get_item_details import get_item_details
 
 from frappe.model.document import Document
@@ -60,7 +60,16 @@ def update_packing_list_item(doc, packing_item_code, qty, main_item_row, descrip
 
 def make_packing_list(doc):
 	"""make packing list for Product Bundle item"""
+	if cint(frappe.db.get_default('maintain_packed_items_list')):
 
+		for d in doc.get("items"):
+			if d.item_code:
+				for i in get_product_bundle_items(d.item_code):
+					return	frappe.db.sql("""select pi.item_name, pi.item_code, pi.uom, pi.description, pi.qty, so.name 
+									from `tabPacked Item` pi,  `tabSales Order` so
+									where pi.parent = so.name""", as_dict = 1)[0]
+		doc.append("packed_items", d)
+	
 	if doc.get("_action") and doc._action == "update_after_submit": return
 
 	parent_items = []
