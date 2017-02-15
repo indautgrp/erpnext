@@ -5,7 +5,7 @@
 
 from __future__ import unicode_literals
 import frappe, json
-from frappe.utils import cstr, flt
+from frappe.utils import cstr, flt, cint
 from erpnext.stock.get_item_details import get_item_details
 
 from frappe.model.document import Document
@@ -17,6 +17,12 @@ def get_product_bundle_items(item_code):
 	return frappe.db.sql("""select t1.item_code, t1.qty, t1.uom, t1.description
 		from `tabProduct Bundle Item` t1, `tabProduct Bundle` t2
 		where t2.new_item_code=%s and t1.parent = t2.name order by t1.idx""", item_code, as_dict=1)
+
+def get_cur_product_bundle_items(item_code, name):
+	cur_bundle = frappe.db.sql("""select pi.item_name, pi.item_code, pi.uom, pi.description, pi.qty
+		from `tabPacked Item` pi 
+		where pi.parent_item = %s and pi.parent_detail_docname= %s""",(item_code, name), as_dict=1)
+	return cur_bundle
 
 def get_packing_item_details(item):
 	return frappe.db.sql("""select item_name, description, stock_uom from `tabItem`
@@ -63,12 +69,23 @@ def make_packing_list(doc):
 
 	if doc.get("_action") and doc._action == "update_after_submit": return
 
+	if cint(frappe.db.get_default('maintain_packed_items_list')) and doc.doctype == "Sales Order" and doc.docstatus != 0:
+		return
+	
 	parent_items = []
 	for d in doc.get("items"):
 		if frappe.db.get_value("Product Bundle", {"new_item_code": d.item_code}):
-			for i in get_product_bundle_items(d.item_code):
-				update_packing_list_item(doc, i.item_code, flt(i.qty)*flt(d.qty), d, i.description)
 
+			if doc.doctype in ["Sales Invoice", "Delivery Note"]:			
+
+				if cint(frappe.db.get_default('maintain_packed_items_list')):
+					for i in get_cur_product_bundle_items(d.item_code, d.so_detail):
+						update_packing_list_item(doc, i.item_code, flt(i.qty) * flt(d.qty), d, i.description)
+
+			else:
+				for i in get_product_bundle_items(d.item_code):
+					update_packing_list_item(doc, i.item_code, flt(i.qty)*flt(d.qty), d, i.description)
+		
 			if [d.item_code, d.name] not in parent_items:
 				parent_items.append([d.item_code, d.name])
 
