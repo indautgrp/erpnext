@@ -228,7 +228,7 @@ def update_fields_gst_adjustments_pi():
 								set account = 'GST Adjustments - IAG',
 								debit = {0}, debit_in_account_currency = {1},
 								credit = {2}, credit_in_account_currency = {3}
-								where account = 'GST Paid - IAGa'
+								where account = 'GST Paid - IAG'
 								and credit > 0.0
 								and voucher_no = '{4}'""".format(debit_gle, debit_in_account_currency_gle, credit_gle,
 				                                                 credit_in_account_currency_gle, ptc.parent))
