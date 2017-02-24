@@ -20,7 +20,7 @@ frappe.query_reports["Tax Analytics"] = {
 		},
 		{
 			"fieldname": "accounting",
-			"label": __("Accounting"),
+			"label": __("Accounting Method"),
 			"fieldtype": "Select",
 			"options": "Accrual Accounting\nCash Accounting",
 			"default": "Accrual Accounting"
