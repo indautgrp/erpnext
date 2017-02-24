@@ -28,9 +28,10 @@
 <table class="table table-bordered">
 	<thead>
 		<tr>
-			<th class="text-left" width="40%">{%= report.columns[1].label %}</th>
-			{% for(var i=2, l=report.columns.length; i<l; i++) { %}
-				<th class="text-right" width="15%">{%= report.columns[i].label %}</th>
+			<th class="text-left" width="9%">{%= report.columns[1].label %}</th>
+			<th class="text-left" width="35%">{%= report.columns[2].label %}</th>
+			{% for(var i=3, l=report.columns.length; i<l; i++) { %}
+				<th class="text-right" width="14%">{%= report.columns[i].label %}</th>
 			{% } %}
 		</tr>
 	</thead>
@@ -46,12 +47,15 @@
 				
 			%}
 			<tr class="{%= row_class %}" style="{%= bold %}">
+				<td class="text-center">
+					<span>{%= dateutil.str_to_user(row.date) %}</span>
+				</td>
 				<td>
 					<span style="padding-left: {%= cint(data[j].indent) * 2 %}em">{%= row.rate %}</span>
 				</td>
-				{% for(var i=2, l=report.columns.length; i<l; i++) { %}
+				{% for(var i=3, l=report.columns.length; i<l; i++) { %}
 					<td class="text-right">
-						{% var fieldname = report.columns[i].field; %}
+						{% var fieldname = report.columns[i].field %}
 						{% if (!is_null(row[fieldname]) && row[fieldname] != "0") { %}
 							{%= '$ ' + Number(row[fieldname]).toFixed(2).toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,") %}
 						{% } %}						
