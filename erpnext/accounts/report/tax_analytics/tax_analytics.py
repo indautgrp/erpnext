@@ -38,14 +38,14 @@ def validate_date_range(filters):
 def get_data_accrual_accounting(filters, taxes):
 	conditions = get_conditions_accrual_accounting(filters)
 	nodes = get_rates_accrual_accounting(filters, conditions, taxes)
-	data = prepare_data(nodes, filters, conditions, "", "", taxes)
+	data = prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="", conditions_date_gl="")
 
 	return data
 
 def get_data_cash_accounting(filters, taxes):
 	conditions, conditions_payment_entry, conditions_date_gl = get_conditions_cash_accounting(filters)
 	nodes = get_rates_cash_accounting(filters, conditions, conditions_payment_entry, conditions_date_gl, taxes)
-	data = prepare_data(nodes, filters, conditions, conditions_payment_entry, conditions_date_gl, taxes)
+	data = prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry, conditions_date_gl)
 
 	return data
 
@@ -91,7 +91,7 @@ def get_conditions_cash_accounting(filters):
 
 	return conditions, conditions_payment_entry, conditions_date_gl
 
-def prepare_data(nodes, filters, conditions, conditions_payment_entry, conditions_date_gl, taxes):
+def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry, conditions_date_gl):
 	""" to prepare the data fields to be shown in the grid """
 	data = []
 	grand_total_sale = 0.0
@@ -111,7 +111,7 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry, condition
 		tax_paid_node = 0.0
 		grand_total_sale_node = 0.0
 		grand_total_purchase_node = 0.0
-		indent = 0
+		indent = 1
 		row_node = {
 			"date": None,
 			"account_name": n.account_name,
@@ -130,7 +130,7 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry, condition
 
 		# to update totals in each node line
 		position_node = len(data)
-		indent = 1
+		indent = 2
 
 		if filters.accounting == "Accrual Accounting":
 			value_added_tax = sorted(get_sinv_tax_total_accrual_accounting(filters, conditions, n.account_head) +
@@ -204,7 +204,7 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry, condition
 		grand_total_sale += grand_total_sale_node
 		grand_total_purchase += grand_total_purchase_node
 
-	indent = 0
+	indent = 1
 	# grand total line
 	row_total = {
 		"date": None,
@@ -261,7 +261,7 @@ def prepare_data(nodes, filters, conditions, conditions_payment_entry, condition
 
 		# update node totals according to the new values
 		for d in data:
-			if d["indent"] == 0:
+			if d["indent"] == 1:
 				purchase_value_grand_total += update_node_pv
 				sales_value_grand_total += update_node_sv
 				update_node_pv = 0.0
@@ -661,7 +661,6 @@ def get_rates_accrual_accounting(filters, conditions, taxes):
 			left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabSales Taxes and Charges`.account_head
 			where `tabGL Entry`.voucher_type in ('Sales Invoice')
-			and `tabGL Entry`.docstatus = 1
 			{taxes}
 			{conditions}
 			group by node_rate, account_head
@@ -672,7 +671,6 @@ def get_rates_accrual_accounting(filters, conditions, taxes):
 			left join `tabPurchase Taxes and Charges` on `tabPurchase Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabPurchase Taxes and Charges`.account_head
 			where `tabGL Entry`.voucher_type in ('Purchase Invoice')
-			and `tabGL Entry`.docstatus = 1
 			{invoice_with_no_income_expense}
 			{taxes}
 			{conditions}
@@ -684,7 +682,6 @@ def get_rates_accrual_accounting(filters, conditions, taxes):
 			left join tabAccount on tabAccount.name = `tabGL Entry`.account
 			left join `tabJournal Entry Account` on `tabJournal Entry Account`.parent = `tabGL Entry`.voucher_no
 			where `tabGL Entry`.voucher_type in ('Journal Entry', 'Payment Entry')
-			and `tabGL Entry`.docstatus = 1
 			and exists(select root_type
 				 from `tabJournal Entry Account`
 				 left join tabAccount on tabAccount.name = `tabJournal Entry Account`.account
@@ -886,7 +883,6 @@ def get_tax_total_cash_accounting(filters, conditions, account_head, conditions_
 				from `tabGL Entry`
 				where voucher_type in ('Journal Entry', 'Payment Entry')
 				and `tabGL Entry`.party_type = 'Customer'
-				and `tabGL Entry`.docstatus = 1
 				{sales_just_payments}
 				{conditions})
 			group by `tabJournal Entry Account`.parent, `tabSales Invoice`.name, `tabJournal Entry Account`.name
@@ -917,7 +913,6 @@ def get_tax_total_cash_accounting(filters, conditions, account_head, conditions_
 				from `tabGL Entry`
 				where voucher_type in ('Journal Entry', 'Payment Entry')
 				and `tabGL Entry`.party_type = 'Supplier'
-				and `tabGL Entry`.docstatus = 1
 				{purchase_just_payments}
 				{conditions})
 			{invoice_with_no_income_expense}
@@ -980,7 +975,6 @@ def get_rates_cash_accounting(filters, conditions, conditions_payment_entry, con
 					from `tabGL Entry`
 					where voucher_type in ('Journal Entry', 'Payment Entry')
 					and `tabGL Entry`.party_type = 'Customer'
-					and `tabGL Entry`.docstatus = 1
 					and ( not exists (
 			            select debit 
 			            from `tabJournal Entry Account` 
@@ -1026,7 +1020,6 @@ def get_rates_cash_accounting(filters, conditions, conditions_payment_entry, con
 				from `tabGL Entry`
 				where voucher_type in ('Journal Entry', 'Payment Entry')
 				and `tabGL Entry`.party_type = 'Supplier'
-				and `tabGL Entry`.docstatus = 1
 				and ( not exists ( select credit
 					from `tabJournal Entry Account`
 					left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type 

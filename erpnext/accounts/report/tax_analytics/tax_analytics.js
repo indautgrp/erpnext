@@ -37,7 +37,7 @@ frappe.query_reports["Tax Analytics"] = {
 					
 		value = default_formatter(row, cell, value, columnDef, dataContext);
 			
-		if (dataContext.indent == 0 || dataContext.rate == "Grand Total") {
+		if (dataContext.indent == 1 || dataContext.rate == "Grand Total") {
 			var $value = $(value).css("font-weight", "bold");
 			value = $value.wrap("<p></p>").parent().html();
 		}
@@ -54,7 +54,7 @@ frappe.query_reports["Tax Analytics"] = {
 		if (!dataContext.rate) 
 			return value;
 
-		if (dataContext.indent == 1) {
+		if (dataContext.indent == 2) {
 			var name = dataContext.rate;
 			name = name.substr(0, name.indexOf(':'));
 			if (dataContext.rate.indexOf("SINV") >= 0)
