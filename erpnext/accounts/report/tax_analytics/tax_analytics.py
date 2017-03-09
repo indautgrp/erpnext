@@ -38,7 +38,7 @@ def validate_date_range(filters):
 def get_data_accrual_accounting(filters, taxes):
 	conditions = get_conditions_accrual_accounting(filters)
 	nodes = get_rates_accrual_accounting(filters, conditions, taxes)
-	data = prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="", conditions_date_gl="")
+	data = prepare_data(nodes, filters, conditions, taxes)
 
 	return data
 
@@ -91,7 +91,7 @@ def get_conditions_cash_accounting(filters):
 
 	return conditions, conditions_payment_entry, conditions_date_gl
 
-def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry, conditions_date_gl):
+def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="", conditions_date_gl=""):
 	""" to prepare the data fields to be shown in the grid """
 	data = []
 	grand_total_sale = 0.0
@@ -1150,6 +1150,7 @@ def get_jv_tax_total_cash(filters, conditions, account_head):
 		{conditions}
 		group by voucher_no""".format(conditions=conditions, jv_roottype_not_equity=get_cond_jv_roottype_not_equity())
 
+	# to get tax collected and paid
 	jv_map = frappe.db.sql("""select {jv_fields}
 	        {join_and_cond}
 			order by posting_date, voucher_no
@@ -1162,6 +1163,7 @@ def get_jv_tax_total_cash(filters, conditions, account_head):
 			}, as_dict=True)
 
 	if jv_map:
+		# to get sales and purchase values
 		sales_purchase_values = frappe.db.sql("""select total_debit as sales_value, total_credit as purchase_value, '' as root_type,
 			concat(`tabJournal Entry`.name, ': ', title) as voucher_no
 			from `tabJournal Entry Account`
@@ -1180,6 +1182,7 @@ def get_jv_tax_total_cash(filters, conditions, account_head):
 					"account_head": account_head
 				}, as_dict=True)
 
+		# to get root_type to check on prepare_data function
 		root_type = frappe.db.sql("""select root_type, concat(voucher_no, ': ', title) as voucher_no
 			from `tabGL Entry`
 			left join tabAccount on tabAccount.name = `tabGL Entry`.account
@@ -1199,6 +1202,7 @@ def get_jv_tax_total_cash(filters, conditions, account_head):
 				}, as_dict=True)
 
 		index = 0
+		# update de values to return the data mapped
 		for spv, rt in zip(sales_purchase_values, root_type):
 			jv_map[index].sales_value = spv.get("sales_value")
 			jv_map[index].purchase_value = spv.get("purchase_value")
