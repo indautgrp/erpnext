@@ -1050,6 +1050,25 @@ def get_rates_cash_accounting(filters, conditions, conditions_payment_entry, con
 				and tabAccount.account_name = 'Creditors')
 			{taxes}
 			group by node_rate, account_name
+			UNION
+			select round(tax_rate, 2) as rate, concat(round(tax_rate, 2), '%% - ', tabAccount.name) as node_rate,
+				tabAccount.name as account_head, account_name
+			from `tabGL Entry`
+			left join tabAccount on tabAccount.name = `tabGL Entry`.account
+			left join `tabJournal Entry Account` on `tabJournal Entry Account`.parent = `tabGL Entry`.voucher_no
+	        left join `tabJournal Entry` on `tabJournal Entry`.name = `tabJournal Entry Account`.parent
+			where `tabGL Entry`.voucher_type in ('Journal Entry', 'Payment Entry')
+			and `tabJournal Entry Account`.parent in (select `tabJournal Entry Account`.parent
+				from `tabJournal Entry Account`
+				left join tabAccount on tabAccount.name = `tabJournal Entry Account`.account
+				left join `tabJournal Entry` on `tabJournal Entry`.name = `tabJournal Entry Account`.parent
+				where `tabJournal Entry Account`.docstatus = 1
+				{conditions}
+				and tabAccount.account_type in ('Bank', 'Cash'))
+			{jv_roottype_not_equity}
+			{conditions}
+	        {taxes}
+			group by node_rate, account_name
 			{get_node_rate_no_tax_cash_accounting}
 			order by rate, account_head
 			""".format(taxes=taxes,
@@ -1058,6 +1077,7 @@ def get_rates_cash_accounting(filters, conditions, conditions_payment_entry, con
 					   conditions_date_gl=conditions_date_gl,
 					   invoice_with_no_income_expense=get_cond_invoice_with_no_income_expense(
 						   """`tabPurchase Taxes and Charges`.parent"""),
+					   jv_roottype_not_equity=get_cond_jv_roottype_not_equity(),
 					   get_node_rate_no_tax_cash_accounting=get_node_rate_no_tax_cash_accounting(taxes,conditions_date_gl)),
 				{
 					"company": filters.company,
