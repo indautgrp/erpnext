@@ -326,7 +326,7 @@ def get_additional_conditions(from_date, ignore_closing_entries, filters):
 	if filters:
 		for key in ['cost_center', 'project']:
 			if filters.get(key):
-				additional_conditions.append("%s = '%s'"%(key, filters.get(key)))
+				additional_conditions.append("%s = '%s'"%(key, (filters.get(key)).replace("'", "''")))
 
 	return " and {}".format(" and ".join(additional_conditions)) if additional_conditions else ""
 
