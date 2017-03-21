@@ -496,3 +496,14 @@ frappe.ui.form.on('Stock Entry', {
 			});
 		},
 })
+
+if (sys_defaults.auto_accounting_for_stock) {
+	cur_frm.fields_dict.items.grid.get_field("cost_center").get_query = function (doc) {
+		return {
+			filters: {
+				'company': doc.company,
+				"is_group": 0
+			}
+		}
+	}
+}
