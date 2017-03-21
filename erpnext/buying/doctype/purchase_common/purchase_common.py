@@ -80,3 +80,16 @@ class PurchaseCommon(BuyingController):
 
 		if status == "Closed":
 			frappe.throw(_("{0} {1} status is {2}").format(doctype, docname, status), frappe.InvalidStatusError)
+
+	def validate_required_projects(self, obj):
+		stock_items = obj.get_stock_items()
+
+		project_item_groups = [x.name for x in frappe.db.get_list("Item Group", "name", filters={"require_project": 1})]
+		if len(stock_items) < len(obj.items):
+			non_stock_list = []
+			for item in obj.items:
+				if not item.project and item.item_code not in stock_items and item.item_group in project_item_groups:
+					non_stock_list.append(cstr(item.idx))
+			if non_stock_list:
+				frappe.throw(
+					_("Non-Stock items for projects need to contain project references at row: {0}".format(", ".join(non_stock_list))))

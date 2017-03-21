@@ -267,6 +267,9 @@ class PurchaseInvoice(BuyingController):
 
 		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype,
 			self.company, self.base_grand_total)
+		if cint(frappe.db.get_default("validate_required_project") or 0):
+			purchase_controller = frappe.get_doc("Purchase Common")
+			purchase_controller.validate_required_projects(self)
 
 		if not self.is_return:
 			self.update_against_document_in_jv()

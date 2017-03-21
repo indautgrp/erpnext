@@ -4,7 +4,7 @@
 from __future__ import unicode_literals
 import frappe
 import json
-from frappe.utils import cstr, flt
+from frappe.utils import cstr, flt, cint
 from frappe import msgprint, _
 from frappe.model.mapper import get_mapped_doc
 from erpnext.controllers.buying_controller import BuyingController
@@ -200,6 +200,9 @@ class PurchaseOrder(BuyingController):
 
 		frappe.get_doc('Authorization Control').validate_approving_authority(self.doctype,
 			self.company, self.base_grand_total)
+
+		if cint(frappe.db.get_default("validate_required_project") or 0):
+			purchase_controller.validate_required_projects(self)
 
 		purchase_controller.update_last_purchase_rate(self, is_submit = 1)
 
