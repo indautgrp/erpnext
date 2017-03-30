@@ -8,7 +8,7 @@ from frappe import _
 from frappe.utils import (flt, getdate, get_first_day, get_last_day, date_diff,
 	add_months, add_days, formatdate, cint)
 
-def get_period_list(from_fiscal_year, to_fiscal_year, periodicity, accumulated_values=False):
+def get_period_list(from_fiscal_year, to_fiscal_year, periodicity, accumulated_values=0):
 	"""Get a list of dict {"from_date": from_date, "to_date": to_date, "key": key, "label": label}
 		Periodicity can be (Yearly, Quarterly, Monthly)"""
 
