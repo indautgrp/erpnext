@@ -958,7 +958,7 @@ def get_pi_tax_total_invoices_with_no_tax_cash_accounting(filters, conditions_da
 	""" to get the purchase amounts of Cash Accounting when the invoice has no tax """
 	fields = """concat(`tabJournal Entry Account`.reference_name, ': ',
 		`tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected, 0.0 as tax_paid,
-		0.0 sales_value, `tabJournal Entry Account`.debit_in_account_currency as purchase_value,
+		0.0 as sales_value, `tabJournal Entry Account`.debit_in_account_currency as purchase_value,
 		`tabGL Entry`.posting_date, account_name, `tabJournal Entry Account`.debit_in_account_currency total_taxes_and_charges,
         `tabJournal Entry Account`.debit_in_account_currency as grand_total,
 	    `tabJournal Entry Account`.debit_in_account_currency base_tax_amount_after_discount_amount"""
