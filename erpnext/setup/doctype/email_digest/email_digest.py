@@ -95,7 +95,13 @@ class EmailDigest(Document):
 		quote = get_random_quote()
 		context.quote = {"text": quote[0], "author": quote[1]}
 
-		if not (context.events or context.todo_list or context.notifications or context.cards):
+		if self.get("purchase_orders_items_overdue"):
+			context.purchase_order_list, context.purchase_orders_items_overdue_list = self.get_purchase_orders_items_overdue_list()
+			if not context.purchase_order_list:
+				frappe.throw(_("No items to be received are overdue"))
+
+		if not (context.events or context.todo_list or context.notifications or context.cards
+		        or context.purchase_orders_items_overdue_list):
 			return None
 
 		frappe.flags.ignore_account_permission = False
@@ -546,6 +552,28 @@ class EmailDigest(Document):
 			return fmt_money(abs(value), currency = self.currency)
 		else:
 			return fmt_money(value, currency=self.currency)
+
+	def get_purchase_orders_items_overdue_list(self):
+		fields_po = "distinct parent as po"
+		fields_poi = "`tabPurchase Order Item`.parent, schedule_date, item_code, received_qty, qty - received_qty as missing_qty, rate, amount"
+		
+		sql_po = """select {fields} from `tabPurchase Order Item` where docstatus=1 and curdate() > schedule_date
+			and received_qty < qty order by parent DESC, schedule_date DESC""".format(fields=fields_po)
+		
+		sql_poi = """select {fields} from `tabPurchase Order Item`
+			left join `tabPurchase Order` on `tabPurchase Order`.name = `tabPurchase Order Item`.parent
+			where `tabPurchase Order Item`.docstatus=1 and curdate() > schedule_date
+			and received_qty < qty order by `tabPurchase Order Item`.idx""".format(fields=fields_poi)
+
+		purchase_order_list = frappe.db.sql(sql_po, as_dict=True)
+		purchase_order_items_overdue_list = frappe.db.sql(sql_poi, as_dict=True)
+		
+		for t in purchase_order_items_overdue_list:
+			t.link = get_url_to_form("Purchase Order", t.parent)
+			t.rate = fmt_money(t.rate, 2, t.currency)
+			t.amount = fmt_money(t.amount, 2, t.currency)
+
+		return purchase_order_list, purchase_order_items_overdue_list
 
 def send():
 	now_date = now_datetime().date()
