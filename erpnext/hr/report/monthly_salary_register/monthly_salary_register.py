@@ -3,12 +3,13 @@
 
 from __future__ import unicode_literals
 import frappe
-from frappe.utils import flt, cstr
-from frappe import msgprint, _
+from frappe.utils import flt
+from frappe import _
+from datetime import datetime
 
 def execute(filters=None):
 	if not filters: filters = {}
-
+	validate_date_range(filters)
 	salary_slips = get_salary_slips(filters)
 	columns, earning_types, ded_types = get_columns(salary_slips)
 	ss_earning_map = get_ss_earning_map(salary_slips)
@@ -18,12 +19,12 @@ def execute(filters=None):
 	data = []
 	for ss in salary_slips:
 		row = [ss.name, ss.employee, ss.employee_name, ss.branch, ss.department, ss.designation,
-			ss.company, ss.month, ss.leave_withut_pay, ss.payment_days]
+			ss.company, ss.start_date, ss.end_date, ss.posting_date, ss.leave_withut_pay, ss.payment_days]
 
 		for e in earning_types:
 			row.append(ss_earning_map.get(ss.name, {}).get(e))
 
-		row += [ss.arrear_amount, ss.leave_encashment_amount, ss.gross_pay]
+		row += [ss.gross_pay]
 
 		for d in ded_types:
 			row.append(ss_ded_map.get(ss.name, {}).get(d))
@@ -34,12 +35,19 @@ def execute(filters=None):
 
 	return columns, data
 
+def validate_date_range(filters):
+	dates = filters.date_range.split(" ")
+	if dates:
+		filters.from_date = datetime.strptime(dates[0], '%d-%m-%Y').strftime('%Y-%m-%d')
+		filters.to_date = datetime.strptime(dates[2], '%d-%m-%Y').strftime('%Y-%m-%d')
+		del filters["date_range"]
+
 def get_columns(salary_slips):
 	columns = [
-		_("Salary Slip ID") + ":Link/Salary Slip:150",_("Employee") + ":Link/Employee:120", _("Employee Name") + "::140", _("Branch") + ":Link/Branch:120",
-		_("Department") + ":Link/Department:120", _("Designation") + ":Link/Designation:120",
-		_("Company") + ":Link/Company:120", _("Month") + "::80", _("Leave Without Pay") + ":Float:130",
-		_("Payment Days") + ":Float:120"
+		_("Salary Slip ID") + ":Link/Salary Slip:150",_("Employee") + ":Link/Employee:120", _("Employee Name") + "::140",
+		_("Branch") + ":Link/Branch:120", _("Department") + ":Link/Department:120", _("Designation") + ":Link/Designation:120",
+		_("Company") + ":Link/Company:120", _("Start Date") + ":Date:80", _("End Date") + ":Date:80", _("Posting Date") + ":Date:85",
+		_("Leave Without Pay") + ":Float:130", _("Payment Days") + ":Float:120"
 	]
 
 	salary_components = {_("Earning"): [], _("Deduction"): []}
@@ -48,11 +56,10 @@ def get_columns(salary_slips):
 		from `tabSalary Detail` sd, `tabSalary Component` sc
 		where sc.name=sd.salary_component and sd.amount != 0 and sd.parent in (%s)""" %
 		(', '.join(['%s']*len(salary_slips))), tuple([d.name for d in salary_slips]), as_dict=1):
-		salary_components[component.type].append(component.salary_component)
+		salary_components[_(component.type)].append(component.salary_component)
 
 	columns = columns + [(e + ":Currency:120") for e in salary_components[_("Earning")]] + \
-		[ _("Arrear Amount") + ":Currency:120", _("Leave Encashment Amount") + ":Currency:150",
-		_("Gross Pay") + ":Currency:120"] + [(d + ":Currency:120") for d in salary_components[_("Deduction")]] + \
+		[_("Gross Pay") + ":Currency:120"] + [(d + ":Currency:120") for d in salary_components[_("Deduction")]] + \
 		[_("Total Deduction") + ":Currency:120", _("Net Pay") + ":Currency:120"]
 
 	return columns, salary_components[_("Earning")], salary_components[_("Deduction")]
@@ -60,23 +67,22 @@ def get_columns(salary_slips):
 def get_salary_slips(filters):
 	conditions, filters = get_conditions(filters)
 	salary_slips = frappe.db.sql("""select * from `tabSalary Slip` where docstatus = 1 %s
-		order by employee, month""" % conditions, filters, as_dict=1)
+		order by employee""" % conditions, filters, as_dict=1)
 
 	if not salary_slips:
-		frappe.throw(_("No salary slip found for month {0} and year {1}").format(
-			filters.get("month"), filters.get("fiscal_year")))
-
+		frappe.throw(_("No salary slip found between {0} and {1}").format(
+			datetime.strptime(filters.from_date, '%Y-%m-%d').strftime('%d-%m-%Y'),
+			datetime.strptime(filters.to_date, '%Y-%m-%d').strftime('%d-%m-%Y')))
 	return salary_slips
 
 def get_conditions(filters):
 	conditions = ""
-	if filters.get("month"):
-		month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov",
-			"Dec"].index(filters["month"]) + 1
-		filters["month"] = month
-		conditions += " and month = %(month)s"
-
-	if filters.get("fiscal_year"): conditions += " and fiscal_year = %(fiscal_year)s"
+	if filters.from_date:
+		if filters.by == "Salary Slip":
+			conditions += " and start_date >= %(from_date)s"
+			conditions += " and end_date <= %(to_date)s"
+		else: # Posting_Date
+			conditions += " and posting_date between %(from_date)s and %(to_date)s"
 	if filters.get("company"): conditions += " and company = %(company)s"
 	if filters.get("employee"): conditions += " and employee = %(employee)s"
 
