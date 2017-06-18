@@ -554,15 +554,17 @@ class EmailDigest(Document):
 			return fmt_money(value, currency=self.currency)
 
 	def get_purchase_orders_items_overdue_list(self):
-		fields_po = "distinct parent as po"
+		fields_po = "distinct `tabPurchase Order Item`.parent as po"
 		fields_poi = "`tabPurchase Order Item`.parent, schedule_date, item_code, received_qty, qty - received_qty as missing_qty, rate, amount"
 		
-		sql_po = """select {fields} from `tabPurchase Order Item` where docstatus=1 and curdate() > schedule_date
-			and received_qty < qty order by parent DESC, schedule_date DESC""".format(fields=fields_po)
-		
-		sql_poi = """select {fields} from `tabPurchase Order Item`
+		sql_po = """select {fields} from `tabPurchase Order Item` 
 			left join `tabPurchase Order` on `tabPurchase Order`.name = `tabPurchase Order Item`.parent
-			where `tabPurchase Order Item`.docstatus=1 and curdate() > schedule_date
+			where status<>'Closed' and `tabPurchase Order Item`.docstatus=1 and curdate() > schedule_date
+			and received_qty < qty order by `tabPurchase Order Item`.parent DESC, schedule_date DESC""".format(fields=fields_po)
+		
+		sql_poi = """select {fields} from `tabPurchase Order Item` 
+			left join `tabPurchase Order` on `tabPurchase Order`.name = `tabPurchase Order Item`.parent
+			where status<>'Closed' and `tabPurchase Order Item`.docstatus=1 and curdate() > schedule_date
 			and received_qty < qty order by `tabPurchase Order Item`.idx""".format(fields=fields_poi)
 
 		purchase_order_list = frappe.db.sql(sql_po, as_dict=True)
