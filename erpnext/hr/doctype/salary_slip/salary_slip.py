@@ -31,8 +31,8 @@ class SalarySlip(TransactionBase):
 		else:
 			self.get_leave_details(lwp = self.leave_without_pay)
 
-		# if self.salary_slip_based_on_timesheet or not self.net_pay:
-		self.calculate_net_pay()
+		if self.salary_slip_based_on_timesheet or not self.net_pay:
+			self.calculate_net_pay()
 
 		company_currency = get_company_currency(self.company)
 		self.total_in_words = money_in_words(self.rounded_total, company_currency)

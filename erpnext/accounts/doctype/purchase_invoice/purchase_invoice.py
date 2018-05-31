@@ -403,7 +403,8 @@ class PurchaseInvoice(BuyingController):
 							"cost_center": item.cost_center,
 							"remarks": self.get("remarks") or _("Accounting Entry for Stock"),
 							"credit": flt(item.landed_cost_voucher_amount),
-							"project": item.project
+							"project": item.project,
+							"support_ticket": item.support_ticket
 						}))
 
 					# sub-contracting warehouse
@@ -426,7 +427,8 @@ class PurchaseInvoice(BuyingController):
 								item.precision("base_net_amount")) if account_currency==self.company_currency
 								else flt(item.net_amount, item.precision("net_amount"))),
 							"cost_center": item.cost_center,
-							"project": item.project
+							"project": item.project,
+							"support_ticket": item.support_ticket
 						}, account_currency)
 					)
 

@@ -46,7 +46,7 @@ def get_item_details():
 	item_map = {}
 
 	for i in frappe.db.sql("select name, item_group, item_name, description, \
-		stock_uom from tabItem \
+		stock_uom from tabItem where disabled=0 \
 		order by item_code, item_group", as_dict=1):
 			item_map.setdefault(i.name, i)
 

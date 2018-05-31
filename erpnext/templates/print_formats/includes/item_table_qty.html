@@ -2,7 +2,15 @@
 	{% if (doc.stock_uom and not doc.is_print_hide("stock_uom")) or (doc.uom and not doc.is_print_hide("uom")) -%}
 	<small class="pull-left">{{ _(doc.uom or doc.stock_uom) }}</small>
 	{%- endif %}
-	{{ doc.get_formatted("qty", doc) }}
+	{% set value = doc.get_formatted("qty", doc) %}
+	{% set precision = 2 %}
+	{% if (value) -%}	
+		{% set temp = frappe.utils.cstr(value).split(".") %}
+		{% if (temp.length==1 or frappe.utils.cint(temp[1])==0) -%}
+			{% set precision = 0 %}
+		{%- endif %}
+	{%- endif %}
+	{{ frappe.utils.fmt_money(doc.get_formatted("qty", doc), precision) }}
 {%- else -%}
 
 {%- endif %}

@@ -222,3 +222,14 @@ frappe.ui.form.on("Purchase Receipt", "is_subcontracted", function(frm) {
 	}
 	frm.toggle_reqd("supplier_warehouse", frm.doc.is_subcontracted==="Yes");
 });
+
+if (sys_defaults.auto_accounting_for_stock) {
+	cur_frm.fields_dict.items.grid.get_field("cost_center").get_query = function (doc) {
+		return {
+			filters: {
+				'company': doc.company,
+				"is_group": 0
+			}
+		}
+	}
+}
