@@ -527,7 +527,8 @@ def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype
 
 	if jv_map:
 		# to get purchase and sales values
-		sales_purchase_values = frappe.db.sql("""select total_debit as sales_value, total_credit as purchase_value, root_type,
+		sales_purchase_values = frappe.db.sql("""select total_debit as sales_value, if(SUM(debit_in_account_currency) = 0,
+			SUM(credit_in_account_currency), SUM(debit_in_account_currency)) as purchase_value, root_type,
 			concat(`tabJournal Entry`.name, ': ', title) as voucher_no
 			from `tabJournal Entry Account`
 		    left join tabAccount ON tabAccount.name = `tabJournal Entry Account`.account
@@ -561,7 +562,8 @@ def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype
 		# update de values to return the data mapped
 		for spv, tcp in zip(sales_purchase_values, tax_collected_paid):
 			jv_map[index].sales_value = spv.get("sales_value")
-			jv_map[index].purchase_value = spv.get("purchase_value")
+			jv_map[index].purchase_value = \
+				spv.get("purchase_value") + tcp.get("debit_in_account_currency") + tcp.get("credit_in_account_currency")
 			jv_map[index].root_type = spv.get("root_type")
 			jv_map[index]["credit_in_account_currency"] = tcp.get("credit_in_account_currency")
 			jv_map[index]["debit_in_account_currency"] = tcp.get("debit_in_account_currency")
@@ -669,14 +671,13 @@ def get_si_new_payment_tax_total_cash_accounting(filters, account_head, conditio
 def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi):
 	""" to get the purchase amounts of Cash Accounting """
 	fields = """concat(voucher_no, ': ', `tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected,
-		if(add_deduct_tax = 'Deduct', (`tabJournal Entry Account`.debit_in_account_currency /
-			`tabPurchase Invoice`.base_grand_total)	* base_tax_amount_after_discount_amount * -1,
-		(`tabJournal Entry Account`.debit_in_account_currency / `tabPurchase Invoice`.base_grand_total)
-			* base_tax_amount_after_discount_amount) as tax_paid, 0.0 as sales_value, (select sum(jea.debit_in_account_currency)
-			from `tabJournal Entry Account` jea	where jea.reference_name = voucher_no
-		and jea.parent = `tabJournal Entry Account`.parent) as purchase_value, `tabJournal Entry`.posting_date, account_name,
-		total_taxes_and_charges, base_grand_total as grand_total, {base_tax_sum_taxes_pi}
-		""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi)
+		({replace_base_tax_sum_taxes_pi}) + (select	ifnull(Sum(PI.total_taxes_and_charges), 0) from `tabPurchase Invoice` PI where
+		PI.return_against = voucher_no) as tax_paid, 0.0 as sales_value, (select sum(jea.debit_in_account_currency) from
+		`tabJournal Entry Account` jea	where jea.reference_name = voucher_no and jea.parent = `tabJournal Entry Account`.parent)
+		as purchase_value, `tabJournal Entry`.posting_date, account_name, total_taxes_and_charges, base_grand_total as grand_total,
+		{base_tax_sum_taxes_pi}
+		""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi,
+	               replace_base_tax_sum_taxes_pi=base_tax_sum_taxes_pi.replace("as base_tax_amount_after_discount_amount", ""))
 
 	just_payments = """and ( not exists ( select credit
 		from `tabJournal Entry Account`
@@ -701,7 +702,7 @@ def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax
 			{just_payments}
 			{conditions})
 		{invoice_with_no_income_expense}
-		group by `tabJournal Entry Account`.parent, `tabPurchase Invoice`.name, `tabPurchase Taxes and Charges`.name
+		group by `tabJournal Entry Account`.parent, `tabPurchase Invoice`.name
 		order by posting_date, voucher_no
 		""".format(conditions=conditions,
 				   fields=fields,
@@ -717,9 +718,9 @@ def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax
 def get_pi_new_payment_tax_total_cash_accounting(filters, account_head, conditions_payment_entry, base_tax_sum_taxes_pi):
 	""" to get the purchase (payment tables) amounts of Cash Accounting """
 	fields = """concat(voucher_no, ': ', `tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected,
-		if(add_deduct_tax = 'Deduct', (allocated_amount / `tabPurchase Invoice`.base_grand_total) *
+		SUM(if(add_deduct_tax = 'Deduct', (allocated_amount / `tabPurchase Invoice`.base_grand_total) *
 			base_tax_amount_after_discount_amount * -1, (allocated_amount / `tabPurchase Invoice`.base_grand_total) *
-			base_tax_amount_after_discount_amount) as tax_paid, 0.0 as sales_value, allocated_amount as purchase_value,
+			base_tax_amount_after_discount_amount)) as tax_paid, 0.0 as sales_value, allocated_amount as purchase_value,
 		`tabPayment Entry`.posting_date, account_name, total_taxes_and_charges, base_grand_total as grand_total,
 		{base_tax_sum_taxes_pi}""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi)
 
@@ -772,6 +773,7 @@ def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_no
 				and tabAccount.account_type in ('Bank', 'Cash'))
 			{jv_roottype_not_equity}
 			{conditions}
+			and (select Count(*) as GLE_Rows_Qty from `tabGL Entry` gle where gle.voucher_no = `tabGL Entry`.voucher_no) > 2
 			group by voucher_no
 			order by posting_date, voucher_no
 			""".format(conditions=conditions, jv_fields=jv_fields, jv_roottype_not_equity=cond_jv_roottype_not_equity),
@@ -791,7 +793,8 @@ def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_no
 
 	if jv_map:
 		# to get sales and purchase values
-		sales_purchase_values = frappe.db.sql("""select total_debit as sales_value, total_credit as purchase_value, root_type,
+		sales_purchase_values = frappe.db.sql("""select total_debit as sales_value, if(SUM(debit_in_account_currency) = 0,
+			SUM(credit_in_account_currency), SUM(debit_in_account_currency)) as purchase_value, root_type,
 			concat(`tabJournal Entry`.name, ': ', title) as voucher_no
 			from `tabJournal Entry Account`
 		    left join tabAccount ON tabAccount.name = `tabJournal Entry Account`.account
@@ -825,7 +828,8 @@ def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_no
 		# for spv in sales_purchase_values:
 		for spv, tcp in zip(sales_purchase_values, tax_collected_paid):
 			jv_map[index].sales_value = spv.get("sales_value")
-			jv_map[index].purchase_value = spv.get("purchase_value")
+			jv_map[index].purchase_value = \
+				spv.get("purchase_value") + tcp.get("debit_in_account_currency") + tcp.get("credit_in_account_currency")
 			jv_map[index].root_type = spv.get("root_type")
 			jv_map[index]["credit_in_account_currency"] = tcp.get("credit_in_account_currency")
 			jv_map[index]["debit_in_account_currency"] = tcp.get("debit_in_account_currency")
@@ -901,7 +905,7 @@ def get_si_tax_total_invoices_with_no_tax_cash_accounting(filters, conditions_da
 		`tabJournal Entry Account`.credit_in_account_currency sales_value, 0.0 as purchase_value,
 		`tabGL Entry`.posting_date, account_name, `tabJournal Entry Account`.credit_in_account_currency total_taxes_and_charges,
         `tabJournal Entry Account`.credit_in_account_currency as grand_total,
-	    `tabJournal Entry Account`.credit_in_account_currency base_tax_amount_after_discount_amount"""
+	    `tabJournal Entry Account`.credit_in_account_currency as base_tax_amount_after_discount_amount"""
 
 	return frappe.db.sql("""select {fields}
 		from `tabJournal Entry Account`
@@ -962,7 +966,7 @@ def get_pi_tax_total_invoices_with_no_tax_cash_accounting(filters, conditions_da
 		0.0 as sales_value, `tabJournal Entry Account`.debit_in_account_currency as purchase_value,
 		`tabGL Entry`.posting_date, account_name, `tabJournal Entry Account`.debit_in_account_currency total_taxes_and_charges,
         `tabJournal Entry Account`.debit_in_account_currency as grand_total,
-	    `tabJournal Entry Account`.debit_in_account_currency base_tax_amount_after_discount_amount"""
+	    `tabJournal Entry Account`.debit_in_account_currency as base_tax_amount_after_discount_amount"""
 
 	return frappe.db.sql("""select {fields}
 		from `tabJournal Entry Account`
