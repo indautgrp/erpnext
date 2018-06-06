@@ -314,12 +314,13 @@ def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="",
 						else:
 							d["purchase_value"] = d["purchase_value"]
 					else:
-						if d["purchase_value"] == d["grand_total"]:
-							d["purchase_value"] = d["purchase_value"] * (d["tax_paid"] / d["base_tax_amount_after_discount_amount"])
-							d["sales_value"] = d["sales_value"] * (d["tax_collected"] / d["base_tax_amount_after_discount_amount"])
-						else:
-							d["purchase_value"] = d["grand_total"] * (d["tax_paid"] / d["base_tax_amount_after_discount_amount"])
-							d["sales_value"] = d["grand_total"] * (d["tax_collected"] / d["base_tax_amount_after_discount_amount"])
+						if d["base_tax_amount_after_discount_amount"] != 0.0:
+							if d["purchase_value"] == d["grand_total"]:
+								d["purchase_value"] = d["purchase_value"] * (d["tax_paid"] / d["base_tax_amount_after_discount_amount"])
+								d["sales_value"] = d["sales_value"] * (d["tax_collected"] / d["base_tax_amount_after_discount_amount"])
+							else:
+								d["purchase_value"] = d["grand_total"] * (d["tax_paid"] / d["base_tax_amount_after_discount_amount"])
+								d["sales_value"] = d["grand_total"] * (d["tax_collected"] / d["base_tax_amount_after_discount_amount"])
 					data[data.count(d) - 1]["purchase_value"] = d["purchase_value"]
 					data[data.count(d) - 1]["sales_value"] = d["sales_value"]
 
