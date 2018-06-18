@@ -670,9 +670,9 @@ def get_si_new_payment_tax_total_cash_accounting(filters, account_head, conditio
 
 def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi):
 	""" to get the purchase amounts of Cash Accounting """
-	fields = """concat(voucher_no, ': ', `tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected, if (
-		(select count(*) as cn from `tabPurchase Invoice` PI where PI.return_against = voucher_no) > 0, ((
-		(select sum(if(add_deduct_tax = 'Deduct', base_tax_amount_after_discount_amount * -1,
+	fields = """concat(voucher_no, ': ', `tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected, if((select count(*) as cn
+		from `tabPurchase Taxes and Charges` where parent = voucher_no and account_head = %(account_head)s) > 1,(
+		((select sum(if(add_deduct_tax = 'Deduct', base_tax_amount_after_discount_amount * -1,
 		base_tax_amount_after_discount_amount)) from `tabPurchase Taxes and Charges` where
 		`tabPurchase Taxes and Charges`.account_head = %(account_head)s and `tabPurchase Taxes and Charges`.parent = voucher_no)
 		) + (select	ifnull(Sum(PI.total_taxes_and_charges), 0) from `tabPurchase Invoice` PI where
@@ -687,10 +687,10 @@ def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax
 
 	just_payments = """and ( not exists ( select credit
 		from `tabJournal Entry Account`
-		left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type 
-		where `tabJournal Entry Account`.parent = voucher_no and root_type = 'Expense' and credit > 0.0 
-		and ( select count(`tabJournal Entry Account`.account_type) 
-		from `tabJournal Entry Account` 
+		left join tabAccount on tabAccount.account_type = `tabJournal Entry Account`.account_type
+		where `tabJournal Entry Account`.parent = voucher_no and root_type = 'Expense' and credit > 0.0
+		and ( select count(`tabJournal Entry Account`.account_type)
+		from `tabJournal Entry Account`
 		where parent = voucher_no and debit > 0.0) > 0))"""
 
 	return frappe.db.sql("""select {fields}
