@@ -23,12 +23,23 @@ frappe.query_reports["Tax Analytics"] = {
 			"label": __("Accounting Method"),
 			"fieldtype": "Select",
 			"options": "Accrual Accounting\nCash Accounting",
-			"default": "Accrual Accounting"
+			"default": "Accrual Accounting",
+			"on_change": function(query_report) {
+				const mPrepend = "[ / ] = Partial Payment";
+				if($("select option:selected").text().indexOf("Cash Accounting") >= 0){
+					var elemPmsg = $("p.msg-box.small");
+					elemPmsg.prepend(mPrepend + "<br>");
+				}
+				else{
+					var mText = $("p.msg-box.small").text();
+					if (mText.indexOf(mPrepend) >= 0)
+						$("p.msg-box.small").html($("p.msg-box.small").html().substring(27));
+				}
+				query_report.trigger_refresh();
+			}
 		}
 	],
 	"formatter":  function(row, cell, value, columnDef, dataContext, default_formatter) {
-		var me = this
-
 		if (columnDef.df.fieldname == "rate") {
 			value = dataContext.rate;
 
@@ -36,10 +47,11 @@ frappe.query_reports["Tax Analytics"] = {
 		}
 					
 		value = default_formatter(row, cell, value, columnDef, dataContext);
-			
-		if (dataContext.indent == 1 || dataContext.rate == "Grand Total") {
+		
+		if (dataContext.indent < 2 || dataContext.rate == "Grand Total") {
 			var $value = $(value).css("font-weight", "bold");
-			value = $value.wrap("<p></p>").parent().html();
+			if (dataContext.rate.indexOf("JV-") != 0 && dataContext.rate.indexOf("SINV-") != 0 && dataContext.rate.indexOf("PINV-") != 0)
+				value = $value.wrap("<p></p>").parent().html();
 		}
 		
 		if ((dataContext.sales_value < 0.0 || dataContext.purchase_value < 0.0) && columnDef.fieldtype != "Date") {
@@ -54,8 +66,8 @@ frappe.query_reports["Tax Analytics"] = {
 		if (!dataContext.rate) 
 			return value;
 
-		if (dataContext.indent == 2) {
-			var name = dataContext.rate;
+		if (dataContext.indent == 1 || dataContext.indent == 2) {
+			var name = dataContext.rate.replace("[ / ] ", ""); //.replace("[ * ] ", "")
 			name = name.substr(0, name.indexOf(':'));
 			if (dataContext.rate.indexOf("SINV") >= 0)
 				var doctype = "Sales Invoice";
@@ -64,12 +76,15 @@ frappe.query_reports["Tax Analytics"] = {
 			if (dataContext.rate.indexOf("JV") >= 0)
 				var doctype = "Journal Entry";
 
-			value = repl('<a class="grey" href="#Form/%(doctype)s/%(name)s" data-doctype="%(doctype)s">%(label)s</a>', {
-				doctype: encodeURIComponent(doctype),
-				name: encodeURIComponent(name),
-				label: value
-			});
+			if (doctype == "Sales Invoice" || doctype == "Purchase Invoice" || doctype == "Journal Entry") {
+				value = repl('<a class="grey" href="#Form/%(doctype)s/%(name)s" data-doctype="%(doctype)s">%(label)s</a>', {
+					doctype: encodeURIComponent(doctype),
+					name: encodeURIComponent(name),
+					label: value
+				});
+			}
 		}
+		
 		return value
 	},
 	"tree": true,
@@ -77,7 +92,7 @@ frappe.query_reports["Tax Analytics"] = {
 	"parent_field": "parent_labels",
 	"initial_depth": 1,
 	onload:function(){
-		$("div[data-fieldname=date_range]").removeClass("col-md-2").addClass("col-lg-2 col-md-3").css("max-width","200px")
+		$("div[data-fieldname=date_range]").removeClass("col-md-2").addClass("col-lg-2 col-md-3").css("max-width","200px");						
 		$("input[data-fieldname=date_range]").daterangepicker({
 			"autoApply": true,
 			"showDropdowns": true,
