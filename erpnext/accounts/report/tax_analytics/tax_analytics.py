@@ -21,10 +21,13 @@ def execute(filters=None):
 		frappe.msgprint(_("No account is set to show in tax report"))
 		return [], []
 
+	# fix $ symbol when switching between dt/reports
+	company_currency = frappe.db.get_value("Company", filters.company, "default_currency")
+
 	if filters.accounting == "Accrual Accounting":
-		data = get_data_accrual_accounting(filters, taxes, nodes)
+		data = get_data_accrual_accounting(filters, taxes, nodes, company_currency)
 	else: # Cash Accounting
-		data = get_data_cash_accounting(filters, taxes, nodes)
+		data = get_data_cash_accounting(filters, taxes, nodes, company_currency)
 
 	return columns, data
 
@@ -35,13 +38,15 @@ def validate_date_range(filters):
 		filters.to_date = datetime.strptime(dates[2], '%d-%m-%Y').strftime('%Y-%m-%d')
 		del filters["date_range"]
 
-def get_data_accrual_accounting(filters, taxes, nodes):
+def get_data_accrual_accounting(filters, taxes, nodes, company_currency):
 	conditions = get_conditions_accrual_accounting(filters)
-	data = prepare_data(nodes, filters, conditions, taxes)
+	data = prepare_data(nodes, filters, conditions, taxes, company_currency)
+	data = prepare_taxed_docs_node_one(data, company_currency)
+	data = prepare_excluded_docs_node_one(data, company_currency, filters, conditions)
 
 	return data
 
-def get_data_cash_accounting(filters, taxes, nodes):
+def get_data_cash_accounting(filters, taxes, nodes, company_currency):
 	row_exception_node = frappe._dict({
 		'name': "Invoices with no tax",
 		"rate": None,
@@ -52,14 +57,33 @@ def get_data_cash_accounting(filters, taxes, nodes):
 	nodes.append(row_exception_node)
 
 	conditions, conditions_payment_entry, conditions_date_gl = get_conditions_cash_accounting(filters)
-	data = prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry, conditions_date_gl)
+	data = prepare_data(nodes, filters, conditions, taxes, company_currency, conditions_payment_entry, conditions_date_gl)
+	data = prepare_taxed_docs_node_one(data, company_currency)
+	data = prepare_excluded_docs_node_one(data, company_currency, filters, conditions, conditions_payment_entry, conditions_date_gl)
 
 	return data
+
+def get_coa_taxes_not_gst():
+	""" From Chart of Accounts - Should the checkbox show_in_tax_reports not ticked """
+
+	account_head = ""
+
+	coa_taxes = frappe.db.sql("""select name as account_head from tabAccount where show_in_tax_reports = 0 order by account_name
+		""", as_dict=True)
+
+	for ct in coa_taxes:
+		account = ct["account_head"]
+		account_head = account_head + "'" + account.replace("'", "''") + "'" + ","
+
+	if len(account_head) > 0:
+		account_head = account_head[:-2] # remove last comma and single quote
+		account_head = account_head[1:]  # remove first single quote
+
+	return account_head
 
 def get_coa_taxes():
 	""" From Chart of Accounts - Should be a tax and the checkbox show_in_tax_reports must be checked """
 	coa_taxes = ""
-	nodes = []
 
 	nodes = frappe.db.sql("""select name, round(tax_rate, 2) as rate, account_name, name as account_head,
 			concat(round(tax_rate, 2), '% - ', account_name) as node_rate
@@ -131,7 +155,7 @@ def get_cond_jv_roottype_not_equity():
 # PREPARE DATA #
 ###################################################################################################################################
 
-def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="", conditions_date_gl=""):
+def prepare_data(nodes, filters, conditions, taxes, company_currency, conditions_payment_entry="", conditions_date_gl=""):
 	""" to prepare the data fields to be shown in the grid """
 	data = []
 	grand_total_sale = 0.0
@@ -143,9 +167,6 @@ def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="",
 	# to create a list of invoices and to show invoice's values splitted when have more than 1 entry showing in the grid
 	split_invoices = []
 	multi_invoice = {}
-
-	# fix $ simbol when switching between dt/reports
-	company_currency = frappe.db.get_value("Company", filters.company, "default_currency")
 
 	# to sum base_tax_amount_after_discount_amount
 	base_tax_sum_taxes_si = get_base_tax_sum_taxes_si()
@@ -171,7 +192,8 @@ def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="",
 			"tax_paid": None,
 			"parent_labels": None,
 			"indent": indent,
-			"currency": company_currency
+			"currency": company_currency,
+			"part_total_payment": None
 		}
 
 		if filters.accounting == "Accrual Accounting":
@@ -228,6 +250,10 @@ def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="",
 						d.purchase_value = 0.0
 						d.tax_paid = 0.0
 
+				ptp = 0 # part_total_payment Accrual
+				if filters.accounting == "Cash Accounting":
+					ptp = d.part_total_payment # 1 if is part payment
+
 				row = {
 					"date": d.posting_date,
 					"account_name": d.account_name,
@@ -241,7 +267,8 @@ def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="",
 					"base_tax_amount_after_discount_amount": d.base_tax_amount_after_discount_amount,
 					"parent_labels": n.node_rate,
 					"indent": indent,
-					"currency": company_currency
+					"currency": company_currency,
+					"part_total_payment": ptp
 				}
 
 				data.append(row)
@@ -264,7 +291,8 @@ def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="",
 				"parent_labels": None,
 				"rate": n.node_rate,
 				"indent": indent - 1,
-				"currency": company_currency
+				"currency": company_currency,
+				"part_total_payment": n.part_total_payment
 			}
 
 			# grand total line
@@ -289,7 +317,8 @@ def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="",
 			"tax_paid": total_tax_paid,
 			"parent_labels": None,
 			"indent": indent,
-			"currency": company_currency
+			"currency": company_currency,
+			"part_total_payment": None
 		}
 
 		data.append(row_total)
@@ -350,6 +379,186 @@ def prepare_data(nodes, filters, conditions, taxes, conditions_payment_entry="",
 			data[position_node_rate]["purchase_value"] = purchase_value_grand_total
 			data[position_node_rate]["sales_value"] = sales_value_grand_total
 
+	if filters.accounting == "Cash Accounting":
+		for d in data:
+			if d["part_total_payment"] == 1:
+				d["rate"] = "[ / ] " + d["rate"]
+
+	return data
+
+def prepare_taxed_docs_node_one(data, company_currency):
+	data_taxed_docs = []
+	taxed_docs = "Taxed Documents"
+
+	row_node = {
+		"date": None,
+		"account_name": taxed_docs,
+		"total_taxes_and_charges": None,
+		"rate": taxed_docs,
+		"sales_value": None,
+		"purchase_value": None,
+		"tax_collected": None,
+		"tax_paid": None,
+		"parent_labels": None,
+		"indent": 0,
+		"currency": company_currency
+	}
+	data_taxed_docs.append(row_node)
+
+	for d in data:
+		if d["indent"] == 1:
+			row = {
+				"date": d["date"],
+				"account_name": d["account_name"],
+				"total_taxes_and_charges": d["total_taxes_and_charges"],
+				"rate": d["rate"],
+				"sales_value": d["sales_value"],
+				"purchase_value": d["purchase_value"],
+				"tax_collected": d["tax_collected"],
+				"tax_paid": d["tax_paid"],
+				"parent_labels": taxed_docs,
+				"indent": 1,
+				"currency": d["currency"]
+			}
+		else:
+			row = {
+				"date": d["date"],
+				"account_name": d["account_name"],
+				"total_taxes_and_charges": d["total_taxes_and_charges"],
+				"rate": d["rate"],
+				"sales_value": d["sales_value"],
+				"purchase_value": d["purchase_value"],
+				"tax_collected": d["tax_collected"],
+				"tax_paid": d["tax_paid"],
+				"grand_total": d["grand_total"],
+				"base_tax_amount_after_discount_amount": d["base_tax_amount_after_discount_amount"],
+				"parent_labels": d["parent_labels"],
+				"indent": 2,
+				"currency": d["currency"]
+			}
+
+		data_taxed_docs.append(row)
+
+	data_taxed_docs[0]["sales_value"] = data_taxed_docs[len(data_taxed_docs) - 1]["sales_value"]         # grand_total_sale
+	data_taxed_docs[0]["purchase_value"] = data_taxed_docs[len(data_taxed_docs) - 1]["purchase_value"]   # grand_total_purchase
+	data_taxed_docs[0]["tax_collected"] = data_taxed_docs[len(data_taxed_docs) - 1]["tax_collected"]     # total_tax_collected
+	data_taxed_docs[0]["tax_paid"] = data_taxed_docs[len(data_taxed_docs) - 1]["tax_paid"]               # total_tax_paid
+
+	data_taxed_docs = data_taxed_docs[:-1]  # remove total line 
+
+	return data_taxed_docs
+
+def prepare_excluded_docs_node_one(data, company_currency, filters, conditions, conditions_payment_entry="", conditions_date_gl=""):
+	taxed_docs = "Excluded"
+
+	row_node = {
+		"date": None,
+		"account_name": taxed_docs,
+		"total_taxes_and_charges": None,
+		"rate": taxed_docs,
+		"sales_value": None,
+		"purchase_value": None,
+		"tax_collected": None,
+		"tax_paid": None,
+		"parent_labels": None,
+		"indent": 0,
+		"currency": company_currency
+	}
+
+	where_excluded_jv = """and `tabJournal Entry`.name not in (select parent from `tabJournal Entry Account` where account in (
+		select name from tabAccount where show_in_tax_reports = 1 order by account_name))"""
+
+	where_excluded_si = """and `tabSales Invoice`.name not in (select parent from `tabSales Taxes and Charges` where account_head
+		in (select name from tabAccount where show_in_tax_reports = 1 order by account_name))"""
+
+	where_excluded_pi = """and `tabPurchase Invoice`.name not in (select parent from `tabPurchase Taxes and Charges` where
+		account_head in (select name from tabAccount where show_in_tax_reports = 1 order by account_name))"""
+
+	if filters.accounting == "Accrual Accounting":
+		value_added_tax = sorted((
+			get_sinv_tax_total_accrual_accounting(filters, conditions, get_coa_taxes_not_gst(), get_base_tax_sum_taxes_si(), where_excluded_si)
+			+ get_sinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, conditions, get_coa_taxes_not_gst(), get_base_tax_sum_taxes_si(), where_excluded_si)
+			+ get_pinv_tax_total_accrual_accounting(filters, conditions, get_coa_taxes_not_gst(), get_base_tax_sum_taxes_pi(), where_excluded_pi)
+			+ get_pinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, conditions, get_coa_taxes_not_gst(), get_base_tax_sum_taxes_pi(), where_excluded_pi)
+			+ get_jv_tax_total_accrual(filters, conditions, get_coa_taxes_not_gst(), get_cond_jv_roottype_not_equity(), where_excluded_jv)
+		), key=lambda k: k['posting_date'])
+	else:  # Cash Accounting
+		value_added_tax = sorted((
+			get_si_tax_total_cash_accounting(filters, conditions, get_coa_taxes_not_gst(), get_base_tax_sum_taxes_si(), where_excluded_si)
+			+ get_si_new_payment_tax_total_cash_accounting(filters, get_coa_taxes_not_gst(), conditions_payment_entry, get_base_tax_sum_taxes_si(), where_excluded_si)
+			+ get_pi_tax_total_cash_accounting(filters, conditions, get_coa_taxes_not_gst(), get_base_tax_sum_taxes_pi(), where_excluded_pi)
+			+ get_pi_new_payment_tax_total_cash_accounting(filters, get_coa_taxes_not_gst(), conditions_payment_entry, get_base_tax_sum_taxes_pi(), where_excluded_pi)
+			+ get_jv_tax_total_accrual(filters, conditions, get_coa_taxes_not_gst(), get_cond_jv_roottype_not_equity(), where_excluded_jv)
+		), key=lambda k: k['posting_date'])
+
+	if len(value_added_tax) > 0:
+		data.append(row_node)
+
+		# to update totals in each node line
+		position_node = len(data)
+		indent = 1
+
+		grand_total_sale_node = 0.0
+		grand_total_purchase_node = 0.0
+
+		for d in value_added_tax:
+			# root_type for jv and to show correct values
+			if "JV-" in d.voucher_no:
+				if d.root_type == "Expense":
+					if d.credit_in_account_currency > 0.0:
+						d.tax_paid = 0.0
+					elif d.credit_in_account_currency == 0.0:
+						d.tax_paid = 0.0
+					else:
+						d.tax_paid = 0.0
+					d.sv = 0.0
+					d.tax_collected = 0.0
+				else:
+					if d.debit_in_account_currency > 0.0:
+						d.tax_collected = 0.0
+					elif d.debit_in_account_currency == 0.0:
+						d.tax_collected = 0.0
+					else:
+						d.tax_collected = 0.0
+					d.pv = 0.0
+					d.tax_paid = 0.0
+
+			row = {
+				"date": d.posting_date,
+				"account_name": d.account_name,
+				"total_taxes_and_charges": d.total_taxes_and_charges,
+				"rate": d.voucher_no,
+				"sales_value": d.sv,
+				"purchase_value": d.pv,
+				"tax_collected": d.tax_collected,
+				"tax_paid": d.tax_paid,
+				"grand_total": d.grand_total,
+				"base_tax_amount_after_discount_amount": d.base_tax_amount_after_discount_amount,
+				"parent_labels": "Excluded",
+				"indent": indent,
+				"currency": company_currency
+			}
+
+			data.append(row)
+
+			grand_total_sale_node += d.sv
+			grand_total_purchase_node += d.pv
+
+		# update total 
+		data[position_node - 1] = {
+			"date": None,
+			"account_name": data[position_node - 1]["account_name"],
+			"total_taxes_and_charges": data[position_node - 1]["total_taxes_and_charges"],
+			"tax_collected": 0.0,
+			"tax_paid": 0.0,
+			"sales_value": grand_total_sale_node,
+			"purchase_value": grand_total_purchase_node,
+			"parent_labels": None,
+			"rate": data[position_node - 1]["rate"],
+			"indent": indent - 1,
+			"currency": company_currency
+		}
+
 	return data
 
 def get_columns():
@@ -400,7 +609,7 @@ def get_base_tax_sum_taxes_si():
 	""" to sum base_tax_amount_after_discount_amount of sales invoices """
 	return """(select sum(base_tax_amount_after_discount_amount)
 		from `tabSales Taxes and Charges`, tabAccount
-		where `tabSales Taxes and Charges`.account_head = tabAccount.name 
+		where `tabSales Taxes and Charges`.account_head = tabAccount.name
 		and `tabSales Taxes and Charges`.parent = voucher_no
 		and tabAccount.account_type = 'Tax') as base_tax_amount_after_discount_amount"""
 
@@ -409,7 +618,7 @@ def get_base_tax_sum_taxes_pi():
 	return """(select sum(if(add_deduct_tax = 'Deduct', base_tax_amount_after_discount_amount *-1,
 			base_tax_amount_after_discount_amount))
 		from `tabPurchase Taxes and Charges`, tabAccount
-		where `tabPurchase Taxes and Charges`.account_head = tabAccount.name 
+		where `tabPurchase Taxes and Charges`.account_head = tabAccount.name
 		and `tabPurchase Taxes and Charges`.parent = voucher_no
 		and tabAccount.account_type = 'Tax') as base_tax_amount_after_discount_amount"""
 
@@ -417,8 +626,7 @@ def get_base_tax_sum_taxes_pi():
 # ACCRUAL ACCOUNTING #
 ###################################################################################################################################
 
-def get_value_added_tax_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_si, base_tax_sum_taxes_pi,
-       cond_jv_roottype_not_equity):
+def get_value_added_tax_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_si, base_tax_sum_taxes_pi, cond_jv_roottype_not_equity):
 	""" to get sales/purchase invoices and return to prepare_data function """
 	return (get_sinv_tax_total_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_si) +
        get_sinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_si) +
@@ -426,11 +634,11 @@ def get_value_added_tax_accrual_accounting(filters, conditions, account_head, ba
        get_pinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi) +
        get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype_not_equity))
 
-def get_sinv_tax_total_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_si):
+def get_sinv_tax_total_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_si, excluded=""):
 	""" to get the sales invoice amounts of Accrual Accounting """
 	sales_fields = """concat(voucher_no, ': ', title) as voucher_no, base_tax_amount_after_discount_amount as tax_collected,
 		0.0 as tax_paid, `tabGL Entry`.posting_date, account_name, total_taxes_and_charges, base_grand_total as grand_total,
-		base_grand_total as sales_value, 0.0 as purchase_value,
+		base_grand_total as sales_value, 0.0 as purchase_value, base_grand_total as sv, 0.0 as pv,
 		{base_tax_sum_taxes_si}""".format(base_tax_sum_taxes_si=base_tax_sum_taxes_si)
 
 	return frappe.db.sql("""
@@ -439,27 +647,28 @@ def get_sinv_tax_total_accrual_accounting(filters, conditions, account_head, bas
 			left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabGL Entry`.account
 			left join `tabSales Invoice` on `tabSales Invoice`.name = `tabGL Entry`.voucher_no
-			where account_head = %(account_head)s
+			where account_head in ('{account_head}')
 			and `tabGL Entry`.voucher_type in ('Sales Invoice')
 			and `tabSales Invoice`.docstatus = 1
 			{conditions}
+			{excluded}
 			and root_type = 'Income'
 			group by voucher_no
 			order by posting_date, voucher_no
-			""".format(conditions=conditions, sales_fields=sales_fields),
+			""".format(conditions=conditions, sales_fields=sales_fields, account_head=account_head, excluded=excluded),
 			{
 				"company": filters.company,
 				"from_date": filters.from_date,
-				"to_date": filters.to_date,
-				"account_head": account_head
+				"to_date": filters.to_date
 			}, as_dict=True)
 
-def get_pinv_tax_total_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi):
+def get_pinv_tax_total_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi, excluded=""):
 	""" to get the purchase invoices amounts of Accrual Accounting """
 	purchase_fields = """concat(voucher_no, ': ', title) as voucher_no, 0.0 as tax_collected,
 		sum(if(add_deduct_tax = 'Deduct', base_tax_amount_after_discount_amount * -1,
 		base_tax_amount_after_discount_amount)) as tax_paid, `tabGL Entry`.posting_date, account_name, total_taxes_and_charges,
-		base_grand_total as grand_total, 0.0 as sales_value, base_grand_total as purchase_value, {base_tax_sum_taxes_pi}
+		base_grand_total as grand_total, 0.0 as sales_value, base_grand_total as purchase_value, 0.0 as sv, base_grand_total as pv,
+		{base_tax_sum_taxes_pi}
 		""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi)
 
 	return frappe.db.sql("""
@@ -468,29 +677,31 @@ def get_pinv_tax_total_accrual_accounting(filters, conditions, account_head, bas
 			left join `tabPurchase Taxes and Charges` on `tabPurchase Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 			left join tabAccount on tabAccount.name = `tabGL Entry`.account
 			left join `tabPurchase Invoice` on `tabPurchase Invoice`.name = `tabGL Entry`.voucher_no
-			where account_head = %(account_head)s
+			where account_head in ('{account_head}')
 			and `tabGL Entry`.voucher_type in ('Purchase Invoice')
 			and `tabPurchase Invoice`.docstatus = 1
 			{invoice_with_no_income_expense}
 			{conditions}
+			{excluded}
 			and tabAccount.account_name = 'Creditors'
 			group by voucher_no
 			order by posting_date, voucher_no
 			""".format(conditions=conditions,
 	                   purchase_fields=purchase_fields,
-	                   invoice_with_no_income_expense=get_cond_invoice_with_no_income_expense("""`tabPurchase Invoice`.name""")),
+	                   invoice_with_no_income_expense=get_cond_invoice_with_no_income_expense("""`tabPurchase Invoice`.name"""),
+	                   account_head=account_head, excluded=excluded),
 					{
 						"company": filters.company,
 						"from_date": filters.from_date,
-						"to_date": filters.to_date,
-						"account_head": account_head
+						"to_date": filters.to_date
 					}, as_dict=True)
 
-def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype_not_equity):
+def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype_not_equity, excluded=""):
 	""" to get the journal vouchers amounts of Accrual Accounting """
 	jv_fields = """voucher_no as journal_voucher, concat(voucher_no, ': ', title) as voucher_no,
 		`tabJournal Entry`.posting_date, account_name, 0.0 as total_taxes_and_charges, 0.0 as grand_total,
-		0.0 as base_tax_amount_after_discount_amount, voucher_no as invoice, 0.0 as sales_value, 0.0 as purchase_value"""
+		0.0 as base_tax_amount_after_discount_amount, voucher_no as invoice, 0.0 as sales_value, 0.0 as purchase_value,
+		`tabJournal Entry`.total_debit as sv, `tabJournal Entry`.total_credit as pv """
 
 	# to get tax collected and paid
 	jv_map = frappe.db.sql("""select {jv_fields} 
@@ -499,7 +710,7 @@ def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype
 		left join `tabJournal Entry` on `tabJournal Entry`.name = `tabGL Entry`.voucher_no
 		left join `tabJournal Entry Account` on `tabJournal Entry Account`.parent = voucher_no
 		where `tabGL Entry`.voucher_type in ('Journal Entry', 'Payment Entry')
-		and `tabGL Entry`.account = %(account_head)s
+		and `tabGL Entry`.account in ('{account_head}')
 		and `tabJournal Entry`.docstatus = 1
 		and (exists(select credit
 			from `tabJournal Entry Account`
@@ -508,14 +719,15 @@ def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype
 			and root_type in ('Expense', 'Income')))
 		{jv_roottype_not_equity}
 		{conditions}
+		{excluded}
 		group by voucher_no
 		order by posting_date, voucher_no
-		""".format(conditions=conditions, jv_fields=jv_fields, jv_roottype_not_equity=cond_jv_roottype_not_equity),
+		""".format(conditions=conditions, jv_fields=jv_fields, jv_roottype_not_equity=cond_jv_roottype_not_equity,
+	               account_head=account_head, excluded=excluded),
 				{
 					"company": filters.company,
 					"from_date": filters.from_date,
-					"to_date": filters.to_date,
-					"account_head": account_head
+					"to_date": filters.to_date
 				}, as_dict=True)
 
 	invoices = ""
@@ -541,8 +753,7 @@ def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype
 					{
 						"company": filters.company,
 						"from_date": filters.from_date,
-						"to_date": filters.to_date,
-						"account_head": account_head
+						"to_date": filters.to_date
 					}, as_dict=True)
 
 		# to get debit and credit to use as tax paid/collected
@@ -553,10 +764,10 @@ def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype
 			left join `tabJournal Entry` on `tabJournal Entry`.name = `tabGL Entry`.voucher_no
 			left join `tabJournal Entry Account` on `tabJournal Entry Account`.parent = voucher_no
 			where `tabJournal Entry Account`.parent in ({invoices})
-			and `tabGL Entry`.account = %(account_head)s
+			and `tabGL Entry`.account in ('{account_head}')
 			group by voucher_no
 			order by `tabJournal Entry`.posting_date, voucher_no
-			""".format(invoices=invoices), {"account_head": account_head}, as_dict=True)
+			""".format(invoices=invoices, account_head=account_head), as_dict=True)
 
 		index = 0
 		# update de values to return the data mapped
@@ -575,8 +786,7 @@ def get_jv_tax_total_accrual(filters, conditions, account_head, cond_jv_roottype
 # CASH ACCOUNTING #
 ###################################################################################################################################
 
-def get_value_added_tax_cash_accounting(filters, conditions, account_head, conditions_payment_entry, conditions_date_gl, taxes,
-        base_tax_sum_taxes_si, base_tax_sum_taxes_pi, cond_jv_roottype_not_equity):
+def get_value_added_tax_cash_accounting(filters, conditions, account_head, conditions_payment_entry, conditions_date_gl, taxes, base_tax_sum_taxes_si, base_tax_sum_taxes_pi, cond_jv_roottype_not_equity):
 	""" to get sales/purchase invoices and return to prepare_data function """
 	if account_head == "Invoices with no tax": # the invoices that don't have a tax account involved
 		taxes_exceptions = taxes.replace("and tabAccount.name in", "")
@@ -593,56 +803,67 @@ def get_value_added_tax_cash_accounting(filters, conditions, account_head, condi
 			get_pi_new_payment_tax_total_cash_accounting(filters, account_head, conditions_payment_entry, base_tax_sum_taxes_pi) +
 			get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_not_equity))
 
-def get_si_tax_total_cash_accounting(filters, conditions, account_head, base_tax_sum_taxes_si):
+def get_si_tax_total_cash_accounting(filters, conditions, account_head, base_tax_sum_taxes_si, excluded=""):
 	""" to get the sales amounts of Cash Accounting """
 	fields = """concat(voucher_no, ': ', `tabSales Invoice`.title) as voucher_no,
        (`tabJournal Entry Account`.credit_in_account_currency / `tabSales Invoice`.base_grand_total)
        * base_tax_amount_after_discount_amount as tax_collected, 0.0 as tax_paid,
        `tabJournal Entry Account`.credit_in_account_currency as sales_value, 0.0 as purchase_value,
        `tabJournal Entry`.posting_date, account_name, total_taxes_and_charges, base_grand_total as grand_total,
-       {base_tax_sum_taxes_si}""".format(base_tax_sum_taxes_si=base_tax_sum_taxes_si)
+       base_grand_total as sv, 0.0 as pv, 0 as part_total_payment, {base_tax_sum_taxes_si}
+       """.format(base_tax_sum_taxes_si=base_tax_sum_taxes_si)
 
 	just_payments = """and ( not exists (
         select debit
         from `tabJournal Entry Account`
-        where parent = voucher_no and ((account_type in ('Income Account', 'Chargeable', 'Expense Account')) 
+        where parent = voucher_no and ((account_type in ('Income Account', 'Chargeable', 'Expense Account'))
         and debit > 0.0)
         and ( select count(account_type)
         from `tabJournal Entry Account`
         where parent = voucher_no and (account_type = 'Receivable' and credit > 0.0))))"""
 
-	return frappe.db.sql("""select {fields}
+	part_total_payment = """, (select IF(IF(tjea.debit_in_account_currency > 0, tjea.debit_in_account_currency, 
+			tjea.credit_in_account_currency) < tsi.base_grand_total, 1, 0) as part_total_payment
+			from `tabJournal Entry Account` tjea
+			inner join `tabSales Invoice` tsi on tsi.name = tjea.reference_name
+			where tjea.reference_name = voucher_no and tjea.parent = `tabJournal Entry`.name) as part_total_payment"""
+
+	return frappe.db.sql("""select {fields}{part_total_payment}
 		from `tabGL Entry`
 		left join `tabSales Taxes and Charges` on `tabSales Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 		left join tabAccount on tabAccount.name = `tabGL Entry`.account
 		left join `tabSales Invoice` on `tabSales Invoice`.name = `tabGL Entry`.voucher_no
 		left join `tabJournal Entry Account` on `tabJournal Entry Account`.reference_name = voucher_no
 		left join `tabJournal Entry` on `tabJournal Entry`.name = `tabJournal Entry Account`.parent
-		where account_head = %(account_head)s
+		where account_head in ('{account_head}')
 		and `tabJournal Entry Account`.parent in (select distinct voucher_no
 			from `tabGL Entry`
 			where voucher_type = 'Journal Entry'
 			and `tabGL Entry`.party_type = 'Customer'
 			{just_payments}
-			{conditions})
+			{conditions}
+			{excluded})
 		group by `tabJournal Entry Account`.parent, `tabSales Invoice`.name, `tabJournal Entry Account`.name
 		order by posting_date, voucher_no
 		""".format(conditions=conditions,
-				   fields=fields,
-				   just_payments=just_payments),
+	               fields=fields,
+	               just_payments=just_payments,
+	               account_head=account_head,
+	               excluded=excluded,
+	               part_total_payment=part_total_payment),
 			{
 				"company": filters.company,
 				"from_date": filters.from_date,
-				"to_date": filters.to_date,
-				"account_head": account_head
+				"to_date": filters.to_date
 			}, as_dict=True)
 
-def get_si_new_payment_tax_total_cash_accounting(filters, account_head, conditions_payment_entry, base_tax_sum_taxes_si):
+def get_si_new_payment_tax_total_cash_accounting(filters, account_head, conditions_payment_entry, base_tax_sum_taxes_si, excluded=""):
 	""" to get the sales (payment tables) amounts of Cash Accounting """
 	fields = """concat(voucher_no, ': ', `tabSales Invoice`.title) as voucher_no,
 		(allocated_amount  / `tabSales Invoice`.base_grand_total) *	base_tax_amount_after_discount_amount as tax_collected,
 		0.0 as tax_paid, allocated_amount as sales_value, 0.0 as purchase_value, `tabPayment Entry`.posting_date, account_name,
-		total_taxes_and_charges, base_grand_total as grand_total, {base_tax_sum_taxes_si}
+		total_taxes_and_charges, base_grand_total as grand_total, base_grand_total as sv, 0.0 as pv,
+		IF(allocated_amount < total_amount, 1, 0) as part_total_payment, {base_tax_sum_taxes_si}
 		""".format(base_tax_sum_taxes_si=base_tax_sum_taxes_si)
 
 	return frappe.db.sql("""select {fields}
@@ -652,29 +873,28 @@ def get_si_new_payment_tax_total_cash_accounting(filters, account_head, conditio
 		left join `tabSales Invoice` on `tabSales Invoice`.name = `tabGL Entry`.voucher_no
 		left join `tabPayment Entry Reference` on `tabPayment Entry Reference`.reference_name = voucher_no
 		left join `tabPayment Entry` on `tabPayment Entry`.name = `tabPayment Entry Reference`.parent
-		where account_head = %(account_head)s
+		where account_head in ('{account_head}')
 		and `tabGL Entry`.voucher_type in ('Sales Invoice')
 		and `tabPayment Entry`.docstatus = 1
 		{conditions_payment_entry}
+		{excluded}
 		and root_type = 'Income'
 		group by reference_name, `tabPayment Entry`.name
 		order by posting_date, voucher_no
-		""".format(conditions_payment_entry=conditions_payment_entry,
-				   fields=fields),
+		""".format(conditions_payment_entry=conditions_payment_entry, fields=fields, account_head=account_head, excluded=excluded),
 			{
 				"company": filters.company,
 				"from_date": filters.from_date,
-				"to_date": filters.to_date,
-				"account_head": account_head
+				"to_date": filters.to_date
 			}, as_dict=True)
 
-def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi):
+def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi, excluded=""):
 	""" to get the purchase amounts of Cash Accounting """
 	fields = """concat(voucher_no, ': ', `tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected, if((select count(*) as cn
-		from `tabPurchase Taxes and Charges` where parent = voucher_no and account_head = %(account_head)s) > 1,(
+		from `tabPurchase Taxes and Charges` where parent = voucher_no and account_head in ('{account_head}')) > 1,(
 		((select sum(if(add_deduct_tax = 'Deduct', base_tax_amount_after_discount_amount * -1,
 		base_tax_amount_after_discount_amount)) from `tabPurchase Taxes and Charges` where
-		`tabPurchase Taxes and Charges`.account_head = %(account_head)s and `tabPurchase Taxes and Charges`.parent = voucher_no)
+		`tabPurchase Taxes and Charges`.account_head in ('{account_head}') and `tabPurchase Taxes and Charges`.parent = voucher_no)
 		) + (select	ifnull(Sum(PI.total_taxes_and_charges), 0) from `tabPurchase Invoice` PI where
 		PI.return_against = voucher_no)), (if (add_deduct_tax = 'Deduct', (`tabJournal Entry Account`.debit_in_account_currency
 		/ `tabPurchase Invoice`.base_grand_total) * base_tax_amount_after_discount_amount * -1,
@@ -682,8 +902,8 @@ def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax
 		* base_tax_amount_after_discount_amount))) as tax_paid, 0.0 as sales_value,
 		(select sum(jea.debit_in_account_currency) from `tabJournal Entry Account` jea	where jea.reference_name = voucher_no
 		and jea.parent = `tabJournal Entry Account`.parent) as purchase_value, `tabJournal Entry`.posting_date, account_name,
-		total_taxes_and_charges, base_grand_total as grand_total, {base_tax_sum_taxes_pi}
-		""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi)
+		total_taxes_and_charges, base_grand_total as grand_total, 0.0 as sv, base_grand_total as pv, {base_tax_sum_taxes_pi}
+		""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi, account_head=account_head)
 
 	just_payments = """and ( not exists ( select credit
 		from `tabJournal Entry Account`
@@ -693,42 +913,52 @@ def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax
 		from `tabJournal Entry Account`
 		where parent = voucher_no and debit > 0.0) > 0))"""
 
-	return frappe.db.sql("""select {fields}
+	part_total_payment = """, (select IF(IF(tjea.debit_in_account_currency > 0, tjea.debit_in_account_currency, 
+		tjea.credit_in_account_currency) < tpi.base_grand_total, 1, 0) as part_total_payment
+		from `tabJournal Entry Account` tjea
+		inner join `tabPurchase Invoice` tpi on tpi.name = tjea.reference_name
+		where tjea.reference_name = voucher_no and tjea.parent = `tabJournal Entry`.name) as part_total_payment"""
+
+	return frappe.db.sql("""select {fields}{part_total_payment}
 		from `tabGL Entry`
 		left join `tabPurchase Taxes and Charges` on `tabPurchase Taxes and Charges`.parent = `tabGL Entry`.voucher_no
 		left join tabAccount on tabAccount.name = `tabGL Entry`.account
 		left join `tabPurchase Invoice` on `tabPurchase Invoice`.name = `tabGL Entry`.voucher_no
 		left join `tabJournal Entry Account` on `tabJournal Entry Account`.reference_name = voucher_no
 		left join `tabJournal Entry` on `tabJournal Entry`.name = `tabJournal Entry Account`.parent
-		where account_head = %(account_head)s
+		where account_head in ('{account_head}')
 		and `tabJournal Entry Account`.parent in (select distinct voucher_no
 			from `tabGL Entry`
 			where voucher_type = 'Journal Entry'
 			and `tabGL Entry`.party_type = 'Supplier'
 			{just_payments}
-			{conditions})
+			{conditions}
+			{excluded})
 		{invoice_with_no_income_expense}
 		group by `tabJournal Entry Account`.parent, `tabPurchase Invoice`.name
 		order by posting_date, voucher_no
 		""".format(conditions=conditions,
-				   fields=fields,
-				   just_payments=just_payments,
-				   invoice_with_no_income_expense=get_cond_invoice_with_no_income_expense("""`tabPurchase Invoice`.name""")),
+	               fields=fields,
+	               just_payments=just_payments,
+	               account_head=account_head,
+	               excluded=excluded,
+	               part_total_payment=part_total_payment,
+	               invoice_with_no_income_expense=get_cond_invoice_with_no_income_expense("""`tabPurchase Invoice`.name""")),
 			{
 				"company": filters.company,
 				"from_date": filters.from_date,
-				"to_date": filters.to_date,
-				"account_head": account_head
+				"to_date": filters.to_date
 			}, as_dict=True)
 
-def get_pi_new_payment_tax_total_cash_accounting(filters, account_head, conditions_payment_entry, base_tax_sum_taxes_pi):
+def get_pi_new_payment_tax_total_cash_accounting(filters, account_head, conditions_payment_entry, base_tax_sum_taxes_pi, excluded=""):
 	""" to get the purchase (payment tables) amounts of Cash Accounting """
 	fields = """concat(voucher_no, ': ', `tabPurchase Invoice`.title) as voucher_no, 0.0 as tax_collected,
 		SUM(if(add_deduct_tax = 'Deduct', (allocated_amount / `tabPurchase Invoice`.base_grand_total) *
 			base_tax_amount_after_discount_amount * -1, (allocated_amount / `tabPurchase Invoice`.base_grand_total) *
 			base_tax_amount_after_discount_amount)) as tax_paid, 0.0 as sales_value, allocated_amount as purchase_value,
-		`tabPayment Entry`.posting_date, account_name, total_taxes_and_charges, base_grand_total as grand_total,
-		{base_tax_sum_taxes_pi}""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi)
+		`tabPayment Entry`.posting_date, account_name, total_taxes_and_charges, base_grand_total as grand_total, 0.0 as sv,
+		base_grand_total as pv, IF(allocated_amount < total_amount, 1, 0) as part_total_payment, {base_tax_sum_taxes_pi}
+		""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi)
 
 	return frappe.db.sql("""select {fields}
 		from `tabGL Entry`
@@ -737,29 +967,29 @@ def get_pi_new_payment_tax_total_cash_accounting(filters, account_head, conditio
 		left join `tabPurchase Invoice` on `tabPurchase Invoice`.name = `tabGL Entry`.voucher_no
 		left join `tabPayment Entry Reference` on `tabPayment Entry Reference`.reference_name = voucher_no
 		left join `tabPayment Entry` on `tabPayment Entry`.name = `tabPayment Entry Reference`.parent
-		where account_head = %(account_head)s
+		where account_head in ('{account_head}')
 		and `tabGL Entry`.voucher_type in ('Purchase Invoice')
 		and `tabPayment Entry`.docstatus = 1
 		{invoice_with_no_income_expense}
 		{conditions_payment_entry}
+		{excluded}
 		and tabAccount.account_name = 'Creditors'
 		group by reference_name, `tabPayment Entry`.name
 		order by posting_date, voucher_no
-		""".format(conditions_payment_entry=conditions_payment_entry,
-				   fields=fields,
-				   invoice_with_no_income_expense=get_cond_invoice_with_no_income_expense("""`tabPurchase Invoice`.name""")),
+		""".format(conditions_payment_entry=conditions_payment_entry, fields=fields, account_head=account_head, excluded=excluded,
+					invoice_with_no_income_expense=get_cond_invoice_with_no_income_expense("""`tabPurchase Invoice`.name""")),
 			{
 				"company": filters.company,
 				"from_date": filters.from_date,
-				"to_date": filters.to_date,
-				"account_head": account_head
+				"to_date": filters.to_date
 			}, as_dict=True)
 
-def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_not_equity):
+def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_not_equity, excluded=""):
 	""" to get the journal vouchers amounts of Cash Accounting """
 	jv_fields = """voucher_no as journal_voucher, concat(voucher_no, ': ', title) as voucher_no,
 		`tabJournal Entry`.posting_date, account_name, 0.0 as total_taxes_and_charges, 0.0 as grand_total,
-		0.0 as base_tax_amount_after_discount_amount, voucher_no as invoice, 0.0 as sales_value, 0.0 as purchase_value"""
+		0.0 as base_tax_amount_after_discount_amount, voucher_no as invoice, 0.0 as sales_value, 0.0 as purchase_value,
+		`tabJournal Entry`.total_debit as sv, `tabJournal Entry`.total_credit as pv, 0 as part_total_payment"""
 
 	# to get tax collected and paid
 	jv_map = frappe.db.sql("""select {jv_fields}
@@ -768,7 +998,7 @@ def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_no
 			left join `tabJournal Entry` on `tabJournal Entry`.name = `tabGL Entry`.voucher_no
 			left join `tabJournal Entry Account` on `tabJournal Entry Account`.parent = voucher_no
 			where `tabGL Entry`.voucher_type in ('Journal Entry', 'Payment Entry')
-			and `tabGL Entry`.account = %(account_head)s
+			and `tabGL Entry`.account in ('{account_head}')
 			and `tabJournal Entry`.docstatus = 1
 			and `tabJournal Entry Account`.parent in (select `tabJournal Entry Account`.parent
 				from `tabJournal Entry Account`
@@ -776,18 +1006,20 @@ def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_no
 				left join `tabJournal Entry` on `tabJournal Entry`.name = `tabJournal Entry Account`.parent
 				where `tabJournal Entry Account`.docstatus = 1
 				{conditions}
+				{excluded}
 				and tabAccount.account_type in ('Bank', 'Cash'))
 			{jv_roottype_not_equity}
 			{conditions}
+			{excluded}
 			and (select Count(*) as GLE_Rows_Qty from `tabGL Entry` gle where gle.voucher_no = `tabGL Entry`.voucher_no) > 2
 			group by voucher_no
 			order by posting_date, voucher_no
-			""".format(conditions=conditions, jv_fields=jv_fields, jv_roottype_not_equity=cond_jv_roottype_not_equity),
+			""".format(conditions=conditions, jv_fields=jv_fields, jv_roottype_not_equity=cond_jv_roottype_not_equity,
+	                   account_head=account_head, excluded=excluded),
 			{
 			   "company": filters.company,
 			   "from_date": filters.from_date,
-			   "to_date": filters.to_date,
-			   "account_head": account_head
+			   "to_date": filters.to_date
 			}, as_dict=True)
 
 	invoices = ""
@@ -812,8 +1044,7 @@ def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_no
 				{
 					"company": filters.company,
 					"from_date": filters.from_date,
-					"to_date": filters.to_date,
-					"account_head": account_head
+					"to_date": filters.to_date
 				}, as_dict=True)
 
 		# to get debit and credit to use as tax paid/collected
@@ -824,10 +1055,10 @@ def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_no
 			left join `tabJournal Entry` on `tabJournal Entry`.name = `tabGL Entry`.voucher_no
 			left join `tabJournal Entry Account` on `tabJournal Entry Account`.parent = voucher_no
 			where `tabJournal Entry Account`.parent in ({invoices})
-			and `tabGL Entry`.account = %(account_head)s
+			and `tabGL Entry`.account in ('{account_head}')
 			group by voucher_no
 			order by `tabJournal Entry`.posting_date, voucher_no
-			""".format(invoices=invoices), {"account_head": account_head}, as_dict=True)
+			""".format(invoices=invoices, account_head=account_head, excluded=excluded), as_dict=True)
 
 		index = 0
 		# update de values to return the data mapped
@@ -842,19 +1073,19 @@ def get_jv_tax_total_cash(filters, conditions, account_head, cond_jv_roottype_no
 			index += 1
 
 	return jv_map
-	
+
 ###############################
 # INVOICES WITH NO GL ENTRIES #
 ###############################
 
-def get_sinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_si):
+def get_sinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_si, excluded=""):
 	""" to get the amounts of some Sales Invoices that don't have gl entries and should be shown in the report """
 	conditions = conditions.replace("`tabGL Entry`.", "")
 
 	fields = """concat(`tabSales Invoice`.name, ': ', title) as voucher_no,
 		base_tax_amount_after_discount_amount as tax_collected, 0.0 as tax_paid, posting_date, account_name,
 		total_taxes_and_charges, base_grand_total as grand_total, base_grand_total as sales_value, 0.0 as purchase_value,
-		{base_tax_sum_taxes_si}""".format(base_tax_sum_taxes_si=base_tax_sum_taxes_si)
+		base_grand_total as sv, 0.0 as pv, {base_tax_sum_taxes_si}""".format(base_tax_sum_taxes_si=base_tax_sum_taxes_si)
 
 	return frappe.db.sql("""select {fields}
 			from `tabSales Invoice`
@@ -862,25 +1093,25 @@ def get_sinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, c
 			left join tabAccount on tabAccount.name = `tabSales Taxes and Charges`.account_head
 			where `tabSales Invoice`.base_discount_amount = (tax_amount + `tabSales Invoice`.total)
 			and `tabSales Invoice`.docstatus = 1
-			and account_head = %(account_head)s
+			and account_head in ('{account_head}')
 			{conditions}
+			{excluded}
 			group by voucher_no
-			""".format(conditions=conditions, fields=fields),
+			""".format(conditions=conditions, fields=fields, account_head=account_head, excluded=excluded),
 			{
 				"company": filters.company,
 				"from_date": filters.from_date,
-				"to_date": filters.to_date,
-				"account_head": account_head
+				"to_date": filters.to_date
 			}, as_dict=True)
 
-def get_pinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi):
+def get_pinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, conditions, account_head, base_tax_sum_taxes_pi, excluded=""):
 	""" to get the amounts of some Purchase Invoices that don't have gl entries and should be shown in the report """
 	conditions = conditions.replace("`tabGL Entry`.", "")
 
 	fields = """concat(`tabPurchase Invoice`.name, ': ', title) as voucher_no,
 		base_tax_amount_after_discount_amount as tax_collected, 0.0 as tax_paid, posting_date, account_name,
-		total_taxes_and_charges, base_grand_total as grand_total, 0.0 as sales_value, base_grand_total as purchase_value,
-		{base_tax_sum_taxes_pi}""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi)
+		total_taxes_and_charges, base_grand_total as grand_total, 0.0 as sales_value, base_grand_total as purchase_value, 0.0 as sv,
+		base_grand_total as pv, {base_tax_sum_taxes_pi}""".format(base_tax_sum_taxes_pi=base_tax_sum_taxes_pi)
 
 	return frappe.db.sql("""select {fields}
 			from `tabPurchase Invoice`
@@ -888,16 +1119,16 @@ def get_pinv_tax_total_invoices_with_no_gl_entries_accrual_accounting(filters, c
 			left join tabAccount on tabAccount.name = `tabPurchase Taxes and Charges`.account_head
 			where `tabPurchase Invoice`.base_discount_amount = (tax_amount + `tabPurchase Invoice`.total)
 			and `tabPurchase Invoice`.docstatus = 1
-			and account_head = %(account_head)s
+			and account_head in ('{account_head}')
 			{conditions}
+			{excluded}
 			group by voucher_no
 			order by posting_date, voucher_no
-			""".format(conditions=conditions, fields=fields),
+			""".format(conditions=conditions, fields=fields, account_head=account_head, excluded=excluded),
 			{
 				"company": filters.company,
 				"from_date": filters.from_date,
-				"to_date": filters.to_date,
-				"account_head": account_head
+				"to_date": filters.to_date
 			}, as_dict=True)
 
 ########################
