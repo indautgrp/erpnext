@@ -34,7 +34,7 @@ def execute(filters=None):
 			from `tabPurchase Receipt Item` where docstatus=1 and prevdoc_detail_docname=%s""", d.po_detail))
 
 		expense_account = d.expense_account or aii_account_map.get(d.company)
-		row = [d.item_code, d.item_name, d.item_group, d.parent, d.posting_date, d.supplier,
+		row = [d.item_code, d.item_name, d.item_group, d.description, d.parent, d.posting_date, d.supplier,
 			d.supplier_name, d.credit_to, d.mode_of_payment, d.project, d.company, d.purchase_order,
 			purchase_receipt, expense_account, d.qty, d.base_net_rate, d.base_net_amount]
 
@@ -51,7 +51,7 @@ def execute(filters=None):
 
 def get_columns():
 	return [_("Item Code") + ":Link/Item:120", _("Item Name") + "::120",
-		_("Item Group") + ":Link/Item Group:100", _("Invoice") + ":Link/Purchase Invoice:120",
+		_("Item Group") + ":Link/Item Group:100", "Description::150", _("Invoice") + ":Link/Purchase Invoice:120",
 		_("Posting Date") + ":Date:80", _("Supplier") + ":Link/Supplier:120",
 		"Supplier Name::120", "Payable Account:Link/Account:120", 
 		_("Mode of Payment") + ":Link/Mode of Payment:80", _("Project") + ":Link/Project:80",
@@ -82,7 +82,7 @@ def get_items(filters):
 		select 
 			pi_item.name, pi_item.parent, pi.posting_date, pi.credit_to, pi.company,
 			pi.supplier, pi.remarks, pi.base_net_total, pi_item.item_code, pi_item.item_name, 
-			pi_item.item_group, pi_item.project, pi_item.purchase_order, pi_item.purchase_receipt, 
+			pi_item.item_group, pi_item.description, pi_item.project, pi_item.purchase_order, pi_item.purchase_receipt, 
 			pi_item.po_detail, pi_item.expense_account, pi_item.qty, pi_item.base_net_rate, 
 			pi_item.base_net_amount, pi.supplier_name, pi.mode_of_payment
 		from `tabPurchase Invoice` pi, `tabPurchase Invoice Item` pi_item

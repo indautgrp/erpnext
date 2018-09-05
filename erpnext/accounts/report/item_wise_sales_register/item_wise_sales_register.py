@@ -35,7 +35,7 @@ def execute(filters=None):
 		if not delivery_note and d.update_stock:
 			delivery_note = d.parent
 
-		row = [d.item_code, d.item_name, d.item_group, d.parent, d.posting_date, d.customer, d.customer_name,
+		row = [d.item_code, d.item_name, d.item_group, d.description, d.parent, d.posting_date, d.customer, d.customer_name,
 			d.customer_group, d.debit_to, ", ".join(mode_of_payments.get(d.parent, [])), 
 			d.territory, d.project, d.company, d.sales_order,
 			delivery_note, d.income_account, d.cost_center, d.qty, d.base_net_rate, d.base_net_amount]
@@ -53,7 +53,7 @@ def execute(filters=None):
 def get_columns():
 	return [
 		_("Item Code") + ":Link/Item:120", _("Item Name") + "::120",
-		_("Item Group") + ":Link/Item Group:100", _("Invoice") + ":Link/Sales Invoice:120",
+		_("Item Group") + ":Link/Item Group:100", "Description::150", _("Invoice") + ":Link/Sales Invoice:120",
 		_("Posting Date") + ":Date:80", _("Customer") + ":Link/Customer:120",
 		_("Customer Name") + "::120", _("Customer Group") + ":Link/Customer Group:120",
 		_("Receivable Account") + ":Link/Account:120",
@@ -90,7 +90,7 @@ def get_items(filters):
 		select
 			si_item.name, si_item.parent, si.posting_date, si.debit_to, si.project,
 			si.customer, si.remarks, si.territory, si.company, si.base_net_total,
-			si_item.item_code, si_item.item_name, si_item.item_group, si_item.sales_order,
+			si_item.item_code, si_item.item_name, si_item.item_group, si_item.description, si_item.sales_order,
 			si_item.delivery_note, si_item.income_account, si_item.cost_center, si_item.qty,
 			si_item.base_net_rate, si_item.base_net_amount, si.customer_name,
 			si.customer_group, si_item.so_detail, si.update_stock
