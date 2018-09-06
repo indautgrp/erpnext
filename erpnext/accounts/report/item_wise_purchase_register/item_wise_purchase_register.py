@@ -5,9 +5,11 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 from frappe.utils import flt
+from datetime import datetime
 
 def execute(filters=None):
 	if not filters: filters = {}
+	validate_date_range(filters)
 	columns = get_columns()
 	last_col = len(columns)
 
@@ -48,6 +50,12 @@ def execute(filters=None):
 
 	return columns, data
 
+def validate_date_range(filters):
+	dates = filters.date_range.split(" ")
+	if dates:
+		filters.from_date = datetime.strptime(dates[0], '%d-%m-%Y').strftime('%Y-%m-%d')
+		filters.to_date = datetime.strptime(dates[2], '%d-%m-%Y').strftime('%Y-%m-%d')
+		del filters["date_range"]
 
 def get_columns():
 	return [_("Item Code") + ":Link/Item:120", _("Item Name") + "::120",
