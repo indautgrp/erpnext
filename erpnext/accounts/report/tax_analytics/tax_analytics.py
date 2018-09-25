@@ -826,7 +826,8 @@ def get_si_tax_total_cash_accounting(filters, conditions, account_head, base_tax
 			tjea.credit_in_account_currency) < tsi.base_grand_total, 1, 0) as part_total_payment
 			from `tabJournal Entry Account` tjea
 			inner join `tabSales Invoice` tsi on tsi.name = tjea.reference_name
-			where tjea.reference_name = voucher_no and tjea.parent = `tabJournal Entry`.name) as part_total_payment"""
+			where tjea.reference_name = voucher_no and tjea.parent = `tabJournal Entry`.name
+			group by part_total_payment) as part_total_payment"""
 
 	return frappe.db.sql("""select {fields}{part_total_payment}
 		from `tabGL Entry`
@@ -917,7 +918,8 @@ def get_pi_tax_total_cash_accounting(filters, conditions, account_head, base_tax
 		tjea.credit_in_account_currency) < tpi.base_grand_total, 1, 0) as part_total_payment
 		from `tabJournal Entry Account` tjea
 		inner join `tabPurchase Invoice` tpi on tpi.name = tjea.reference_name
-		where tjea.reference_name = voucher_no and tjea.parent = `tabJournal Entry`.name) as part_total_payment"""
+		where tjea.reference_name = voucher_no and tjea.parent = `tabJournal Entry`.name
+		group by part_total_payment) as part_total_payment"""
 
 	return frappe.db.sql("""select {fields}{part_total_payment}
 		from `tabGL Entry`
