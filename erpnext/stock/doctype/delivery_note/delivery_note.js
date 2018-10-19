@@ -116,6 +116,10 @@ erpnext.stock.DeliveryNoteController = erpnext.selling.SellingController.extend(
 		erpnext.setup_serial_no();
 	},
 
+	packed_items_on_form_rendered: function(doc, grid_row) {
+		erpnext.setup_serial_no();
+	},
+
 	close_delivery_note: function(doc){
 		cur_frm.cscript.update_status("Closed")
 	},
