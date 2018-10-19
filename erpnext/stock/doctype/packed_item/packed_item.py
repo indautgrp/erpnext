@@ -78,39 +78,42 @@ def make_packing_list(doc):
 	
 	for d in doc.get("items"):
 		if frappe.db.get_value("Product Bundle", {"new_item_code": d.item_code}):
-			if cint(frappe.db.get_default('maintain_packed_items_list')) and doc.doctype in ["Sales Invoice", "Delivery Note"] and d.so_detail != 'null' and doc.docstatus == 0:
+			if cint(frappe.db.get_default('maintain_packed_items_list')) and doc.doctype in ["Sales Invoice", "Delivery Note"] and d.so_detail is not None and doc.docstatus == 0:
 				for i in get_cur_product_bundle_items(d.item_code, d.so_detail):
-					update_packing_list_item(doc, i.item_code, flt(i.qty) * flt(d.qty), d, i.description, packed_items_list)
-
+					update_packing_list_item(doc, i.item_code, flt(i.qty), d, i.description, packed_items_list)
 			else:
-					
-				if not cint(frappe.db.get_default('maintain_packed_items_list')) or doc.docstatus == 0: # retain packed items in draft docstatus of SalesOrder
-					for i in get_product_bundle_items(d.item_code):
-						update_packing_list_item(doc, i.item_code, flt(i.qty)*flt(d.qty), d, i.description, packed_items_list)
-			
+				for i in get_product_bundle_items(d.item_code):
+					update_packing_list_item(doc, i.item_code, flt(i.qty)*flt(d.qty), d, i.description, packed_items_list)
+
 			if [d.item_code, d.name] not in parent_items:
 				parent_items.append([d.item_code, d.name])
 
-	cleanup_packing_list(doc, packed_items_list)
+	cleanup_packing_list(doc, parent_items, packed_items_list)
 
-def cleanup_packing_list(doc, packed_items_list):
+def cleanup_packing_list(doc, parent_items, packed_items_list):
 	"""Remove all those child items which are no longer present in main item table"""
 	delete_list = []
 	for d in doc.get("packed_items"):
-		if d.idx not in packed_items_list:
-			# mark for deletion from doclist
-			delete_list.append(d)
+		if cint(frappe.db.get_default('maintain_packed_items_list')):
+			if d.idx not in packed_items_list:
+				# mark for deletion from doclist
+				delete_list.append(d)
+		else:
+			if [d.parent_item, d.parent_detail_docname] not in parent_items:
+				# mark for deletion from doclist
+				delete_list.append(d)
 
 	if not delete_list:
 		return doc
 
 	packed_items = doc.get("packed_items")
 	doc.set("packed_items", [])
-	c =1
+	c = 1
 	for d in packed_items:
 		if d not in delete_list:
-			d.idx = c
-			c+= 1
+			if cint(frappe.db.get_default('maintain_packed_items_list')):
+				d.idx = c
+				c += 1
 			doc.append("packed_items", d)
 
 @frappe.whitelist()
