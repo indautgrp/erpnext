@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 import frappe
+
 import frappe.defaults
 from frappe.utils import cint, flt
 from frappe import _, msgprint, throw
@@ -17,6 +18,7 @@ from erpnext.stock.doctype.delivery_note.delivery_note import update_billed_amou
 from erpnext.projects.doctype.timesheet.timesheet import get_projectwise_timesheet_data
 from erpnext.accounts.doctype.asset.depreciation \
 	import get_disposal_account_and_cost_center, get_gl_entries_on_asset_disposal
+
 
 form_grid_templates = {
 	"items": "templates/form_grid/item_grid.html"
@@ -825,6 +827,15 @@ def make_delivery_note(source_name, target_doc=None):
 			"add_if_empty": True
 		}
 	}, target_doc, set_missing_values)
+
+	if not cint(frappe.db.get_default('maintain_packed_items_list')):
+		if hasattr(target_doc, 'packed_items'):
+			# remove packed_items suggested from sales order
+			del target_doc.packed_items[0:]
+
+		# make packed_items from product bundle
+		from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
+		make_packing_list(target_doc)
 
 	return doclist
 
