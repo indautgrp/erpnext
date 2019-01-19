@@ -89,3 +89,17 @@ def get_permitted_and_not_permitted_links(doctype):
 		"permitted_links": permitted_links,
 		"not_permitted_links": not_permitted_links
 	}
+
+@frappe.whitelist()
+def check_contact_mobile_no(doctype_name, contact_person, quotation_name):
+	contact_mobile_no = ""
+	contact = frappe.db.sql("""select ifnull(mobile_no, '') as mobile_no from tabContact where name = %s""", contact_person, as_dict=True)
+
+	if contact[0].mobile_no != "":
+		contact_mobile_no = contact[0].mobile_no
+	else:
+		doc = frappe.get_doc(doctype_name, quotation_name)
+		if doc:
+			doc.db_set("contact_mobile", None, update_modified=True)
+
+	return contact_mobile_no

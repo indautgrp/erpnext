@@ -12,6 +12,24 @@ frappe.ui.form.on("Sales Order", {
 		// formatter for material request item
 		frm.set_indicator_formatter('item_code',
 			function(doc) { return (doc.qty<=doc.delivered_qty) ? "green" : "orange" })
+	},
+	after_save: function (frm) {
+		// if change contact to a contact that doesn't has a mobile_no it updates to null   
+		// before fixed was showing the latest mobile_no in the address details (not updating)
+		frappe.call({
+			method: 'erpnext.utilities.address_and_contact.check_contact_mobile_no',
+			args: {
+				doctype_name: "Sales Order",
+				contact_person: frm.doc.contact_person,
+				quotation_name: frm.doc.name
+			},
+			callback: function (r) {
+				if (r.message) { }
+				else {
+					frm.reload_doc();
+				}
+			}			
+		});
 	}
 });
 

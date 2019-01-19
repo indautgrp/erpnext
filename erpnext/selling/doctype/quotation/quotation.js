@@ -170,3 +170,24 @@ frappe.ui.form.on("Quotation Item", "stock_balance", function(frm, cdt, cdn) {
 	frappe.route_options = {"item_code": d.item_code};
 	frappe.set_route("query-report", "Stock Balance");
 })
+
+frappe.ui.form.on("Quotation", {
+	after_save: function (frm) {
+		// if change contact to a contact that doesn't has a mobile_no it updates to null   
+		// before fixed was showing the latest mobile_no in the address details (not updating)
+		frappe.call({
+			method: 'erpnext.utilities.address_and_contact.check_contact_mobile_no',
+			args: {
+				doctype_name: "Quotation",
+				contact_person: frm.doc.contact_person,
+				quotation_name: frm.doc.name
+			},
+			callback: function (r) {
+				if (r.message) { }
+				else {
+					frm.reload_doc();
+				}
+			}			
+		});
+	}
+});
