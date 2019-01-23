@@ -26,6 +26,8 @@ class Contact(StatusUpdater):
 		self.set_user()
 		if self.email_id:
 			self.image = has_gravatar(self.email_id)
+		if self.customer.strip() == "":
+			self.customer_name = ""
 
 	def set_user(self):
 		if not self.user and self.email_id:
