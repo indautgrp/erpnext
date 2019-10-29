@@ -683,7 +683,7 @@ def get_pinv_tax_total_accrual_accounting(filters, conditions, account_head, bas
 			{invoice_with_no_income_expense}
 			{conditions}
 			{excluded}
-			and tabAccount.account_name = 'Creditors'
+			and tabAccount.account_name = 'L01010100-Creditors'
 			group by voucher_no
 			order by posting_date, voucher_no
 			""".format(conditions=conditions,
@@ -975,7 +975,7 @@ def get_pi_new_payment_tax_total_cash_accounting(filters, account_head, conditio
 		{invoice_with_no_income_expense}
 		{conditions_payment_entry}
 		{excluded}
-		and tabAccount.account_name = 'Creditors'
+		and tabAccount.account_name = 'L01010100-Creditors'
 		group by reference_name, `tabPayment Entry`.name
 		order by posting_date, voucher_no
 		""".format(conditions_payment_entry=conditions_payment_entry, fields=fields, account_head=account_head, excluded=excluded,
